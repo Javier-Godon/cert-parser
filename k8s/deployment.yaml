@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-parser
+  namespace: default  # Change to your namespace
+  labels:
+    app: cert-parser
+    version: v0.1.0
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: cert-parser
+  template:
+    metadata:
+      labels:
+        app: cert-parser
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context: run as non-root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      
+      # Grace period for graceful shutdown (Uvicorn drains connections)
+      terminationGracePeriodSeconds: 30
+
+      containers:
+      - name: cert-parser
+        # Image built via: docker build -t cert-parser:v0.1.0 .
+        image: cert-parser:v0.1.0
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+
+        # Environment variables from ConfigMap (non-sensitive)
+        envFrom:
+        - configMapRef:
+            name: cert-parser-config
+        
+        # Sensitive environment variables from Secret
+        env:
+        - name: AUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: cert-parser-secrets
+              key: auth-client-secret
+        - name: AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cert-parser-secrets
+              key: auth-password
+        - name: DATABASE_DSN
+          valueFrom:
+            secretKeyRef:
+              name: cert-parser-secrets
+              key: database-dsn
+
+        # Startup probe: waits for app to start (slow CMS parsing is OK here)
+        startupProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30  # 30 * 10s = 5 minutes total startup window
+
+        # Liveness probe: detects stuck/crashed scheduler
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Readiness probe: indicates when scheduler is ready for full load
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Resource constraints (adjust to your actual needs)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        # Volumes for logs (optional, if needed)
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+
+        # Security: read-only root filesystem where possible
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false  # Set to true if logs are not needed locally
+
+      volumes:
+      - name: tmp
+        emptyDir: {}
+
+      # Pod disruption budget: allow rolling updates
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - cert-parser
+              topologyKey: kubernetes.io/hostname

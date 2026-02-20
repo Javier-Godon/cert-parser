@@ -1,0 +1,54 @@
+# Dagger pipeline (not needed in Docker image)
+dagger_go/
+
+# Git metadata
+.git/
+.gitignore
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# Python artifacts (rebuilt in Docker)
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+
+# Test / QA artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+tests/
+
+# Documentation (not needed at runtime)
+docs/
+*.md
+LICENSE
+
+# Kubernetes manifests
+k8s/
+
+# Scripts (development-only)
+scripts/
+
+# Downloaded data (not baked into image)
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (secrets injected at runtime)
+.env
+.env.*
+!.env.example

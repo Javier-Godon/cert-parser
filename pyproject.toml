@@ -1,0 +1,123 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cert-parser"
+version = "0.1.0"
+description = "ICAO Master List certificate parser — downloads, extracts, and stores X.509 certificates from CMS/PKCS#7 binary bundles"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.14"
+authors = [
+    { name = "BlueSolution" },
+]
+keywords = [
+    "icao", "master-list", "certificates", "x509", "cms", "pkcs7",
+    "railway", "rop", "functional",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+    "Topic :: Security :: Cryptography",
+]
+
+dependencies = [
+    # ── Railway-Oriented Programming framework (local) ──
+    "railway-rop",
+
+    # ── HTTP Client: modern sync+async, streaming, HTTP/2 ──
+    "httpx[http2] >= 0.28.1",
+
+    # ── CMS/PKCS#7 unwrapping: full SignedData access (eContent, certs, CRLs) ──
+    "asn1crypto >= 1.5.1",
+
+    # ── X.509 certificate parsing & metadata extraction ──
+    "cryptography >= 44.0.0",
+
+    # ── PostgreSQL driver: sync+async, native BYTEA/UUID/TIMESTAMP ──
+    "psycopg[binary,pool] >= 3.3.0",
+
+    # ── Scheduler: lightweight in-process interval/cron triggers ──
+    "APScheduler >= 3.11.0, < 4.0",
+
+    # ── Configuration: env vars + .env files + validation ──
+    "pydantic >= 2.12.0",
+    "pydantic-settings >= 2.13.0",
+
+    # ── Retry/backoff: decorators for transient failure recovery ──
+    "tenacity >= 9.0.0",
+
+    # ── Observability: structured JSON logging ──
+    "structlog >= 24.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >= 8.3.0",
+    "pytest-cov >= 6.0.0",
+    "pytest-asyncio >= 0.24.0",
+    "mypy >= 1.14.0",
+    "ruff >= 0.9.0",
+    "respx >= 0.22.0",          # httpx mocking
+    "pytest-mock >= 3.14.0",
+    "testcontainers[postgres] >= 4.9.0",  # PostgreSQL in Docker for integration tests
+]
+
+server = [
+    # ── ASGI web server: production-ready for Kubernetes ──
+    "uvicorn[standard] >= 0.35.0",
+    # ── FastAPI: lightweight framework + health checks, dependencies ──
+    "fastapi >= 0.115.0",
+]
+
+[project.scripts]
+cert-parser = "cert_parser.main:main"
+
+# ─────────────────────── Tool Configuration ───────────────────────
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+filterwarnings = [
+    # Some ICAO CSCA certificates have non-conformant ASN.1 (NULL sig params, negative serials)
+    "ignore::cryptography.utils.CryptographyDeprecationWarning",
+]
+markers = [
+    "integration: marks tests requiring real infrastructure — PostgreSQL (deselect with '-m \"not integration\"')",
+    "acceptance: marks end-to-end acceptance tests with real ICAO fixtures (deselect with '-m \"not acceptance\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["asn1crypto.*", "apscheduler.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "SIM"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cert_parser"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# ─────────────────────── Local dependency path ───────────────────────
+# The railway-rop framework is included as a local path dependency.
+# In production, pin to a specific version from a registry.
+# For development: pip install -e "./python_framework" -e ".[dev]"

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+    <component name="GoLibraries">
+        <option name="indexableGoPackageCandidates">
+            <set>
+                <option value="dagger.io/dagger" />
+            </set>
+        </option>
+    </component>
+    <component name="GoModuleSettings">
+        <option name="majorVersion" value="1" />
+        <option name="minorVersion" value="22" />
+    </component>
+</project>

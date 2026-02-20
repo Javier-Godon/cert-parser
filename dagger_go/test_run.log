@@ -1,0 +1,240 @@
+🚀 Starting railway_oriented_java CI/CD Pipeline (Go SDK v0.19.7)...
+   Repository: https://github.com/Javier-Godon/railway_oriented_java.git (branch: main)
+🧪 Test Configuration:
+   Unit tests: true (override with RUN_UNIT_TESTS=false)
+   Integration tests: true (override with RUN_INTEGRATION_TESTS=false)
+Creating new Engine session... OK!
+Establishing connection to Engine... [95m1   : [0m[90;2m[0mconnect
+[95m1   : [0m[90;2m[0m[90m[0.0s] [0m[90m|[0m cloud [2murl=[0mhttps://dagger.cloud/traces/setup
+[95m2   : [0m[90;2m┆ [0mstarting engine
+[95m3   : [0m[90;2m┆ ┆ [0mcreate container
+[95m4   : [0m[90;2m┆ ┆ ┆ [0mexec docker ps -a --format {{.Names}}
+[95m4   : [0m[90;2m┆ ┆ ┆ [0m[90m[0.0s] [0m[90m|[0m dagger-engine-v0.19.7
+[95m4   : [0m[90;2m┆ ┆ ┆ [0m[90m[0.0s] [0m[90m|[0m crossplane-v2
+[95m4   : [0m[90;2m┆ ┆ ┆ [0mexec docker ps -a --format {{.Names}}[32m DONE[0m[90m [0.0s][0m
+[95m5   : [0m[90;2m┆ ┆ ┆ [0mexec docker start dagger-engine-v0.19.7
+[95m5   : [0m[90;2m┆ ┆ ┆ [0m[90m[0.0s] [0m[90m|[0m dagger-engine-v0.19.7
+[95m5   : [0m[90;2m┆ ┆ ┆ [0mexec docker start dagger-engine-v0.19.7[32m DONE[0m[90m [0.0s][0m
+[95m3   : [0m[90;2m┆ ┆ [0mcreate container[32m DONE[0m[90m [0.0s][0m
+[95m2   : [0m[90;2m┆ [0mstarting engine[32m DONE[0m[90m [0.0s][0m
+[95m6   : [0m[90;2m┆ [0mconnecting to engine
+[95m6   : [0m[90;2m┆ [0m[90m[0.1s] [0m[90m|[0m [2m22:51:14[0m [92mINF[0m connected [2mname=[0m1a89e34d833c [2mclient-version=[0mv0.19.7 [2mserver-version=[0mv0.19.7
+[95m6   : [0m[90;2m┆ [0mconnecting to engine[32m DONE[0m[90m [0.1s][0m
+[95m7   : [0m[90;2m┆ [0mstarting session
+OK!
+📥 Cloning repository: https://github.com/Javier-Godon/railway_oriented_java.git (branch: main)
+🔨 Setting up build environment...
+🔖 Getting Git repository...
+
+[95m8   : [0m[90;2m[0mdagger-0.19.7 session --label dagger.io/sdk.name:go --label dagger.io/sdk.version:0.19.7
+[95m1   : [0m[90;2m┆ [0mconnect
+[95m7   : [0m[90;2m┆ ┆ [0mstarting session[32m DONE[0m[90m [0.1s][0m
+
+[95m9   : [0m[90;2m[0mconsuming /v1/traces
+
+[95m8   : [0m[90;2m[0mdagger-0.19.7 session --label dagger.io/sdk.name:go --label dagger.io/sdk.version:0.19.7
+[95m1   : [0m[90;2m┆ [0mconnect[32m DONE[0m[90m [0.3s][0m
+
+[95m9   : [0m[90;2m[0mconsuming /v1/traces[32m DONE[0m[90m [0.1s][0m
+
+[95m10  : [0m[90;2m[0mconsuming /v1/logs
+[95m10  : [0m[90;2m[0mconsuming /v1/logs[32m DONE[0m[90m [0.0s][0m
+
+[95m11  : [0m[90;2m[0mconsuming /v1/metrics
+[95m11  : [0m[90;2m[0mconsuming /v1/metrics[32m DONE[0m[90m [0.0s][0m
+
+[95m12  : [0m[90;2m[0m[1mgit[0m(
+[95m12  : [0m[90;2m┆ [0m[36murl:[0m [33m"https://github.com/Javier-Godon/railway_oriented_java.git"[0m
+[95m12  : [0m[90;2m┆ [0m[36mkeepGitDir:[0m [31mtrue[0m
+[95m12  : [0m[90;2m┆ [0m[36mhttpAuthUsername:[0m [33m"x-access-token"[0m
+[95m12  : [0m[90;2m┆ [0m[36mhttpAuthToken:[0m [1msetSecret[0m([36mname: [0m[33m"github-pat"[0m)[2m: Secret![0m
+[95m12  : [0m[90;2m[0m)[2m: GitRepository![0m
+   Commit: e46812ee33c9
+🔍 Checking Docker availability for testcontainers...
+✅ Docker socket detected on host: /var/run/docker.sock
+   Mounting for full test suite (unit + integration)
+   🔗 Mounting Docker socket for testcontainers
+🧪 Running tests...
+   📊 Running unit tests in Dagger container...
+
+[95m13  : [0m[90;2m[0m[1mcontainer[0m[2m: Container![0m
+[95m13  : [0m[90;2m[0m[1mcontainer[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m14  : [0m[90;2m[0mContainer.[1mfrom[0m([36maddress: [0m[33m"amazoncorretto:25.0.1"[0m)[2m: Container![0m
+
+[95m15  : [0m[90;2m[0mGitRef.[1mtree[0m[2m: Directory![0m
+[95m15  : [0m[90;2m[0mGitRef.[1mtree[0m[34m CACHED[0m[90m [0.0s][0m
+
+[95m16  : [0m[90;2m[0m[1mhost[0m[2m: Host![0m
+[95m16  : [0m[90;2m[0m[1mhost[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m17  : [0m[90;2m[0mHost.[1munixSocket[0m([36mpath: [0m[33m"/var/run/docker.sock"[0m)[2m: Socket![0m
+[95m17  : [0m[90;2m[0mHost.[1munixSocket[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m18  : [0m[90;2m[0mGitRef.[1mcommit[0m[2m: String![0m
+[95m18  : [0m[90;2m[0mGitRef.[1mcommit[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m12  : [0m[90;2m[0m[1mgit[0m[32m DONE[0m[90m [0.5s][0m
+
+[95m19  : [0m[90;2m[0mGitRepository.[1mbranch[0m([36mname: [0m[33m"main"[0m)[2m: GitRef![0m
+[95m19  : [0m[90;2m[0mGitRepository.[1mbranch[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m20  : [0m[90;2m[0m[34mwithExec[0m mvn test '-Dtest=!*IntegrationTest' -Dmaven.compiler.release=25 -Dmaven.compiler.compilerArgs=--enable-preview
+
+[95m21  : [0m[90;2m[0m[34mwithExec[0m yum install -y maven git docker
+[95m21  : [0m[90;2m[0mContainer.[1mwithExec[0m[34m CACHED[0m[90m [0.0s][0m
+
+[95m22  : [0m[90;2m[0mContainer.[1mstdout[0m[2m: String![0m
+
+[95m14  : [0m[90;2m[0mContainer.[1mfrom[0m[34m CACHED[0m[90m [0.8s][0m
+
+[95m23  : [0m[90;2m[0mContainer.[1mwithMountedCache[0m(
+[95m23  : [0m[90;2m┆ [0m[36mpath:[0m [33m"/root/.m2"[0m
+[95m23  : [0m[90;2m┆ [0m[36mcache:[0m [1mcacheVolume[0m([36mkey: [0m[33m"maven-cache-full-suite"[0m)[2m: CacheVolume![0m
+[95m23  : [0m[90;2m[0m)[2m: Container![0m
+[95m23  : [0m[90;2m[0mContainer.[1mwithMountedCache[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m24  : [0m[90;2m[0mContainer.[1mwithMountedDirectory[0m(
+[95m24  : [0m[90;2m┆ [0m[36mpath:[0m [33m"/app"[0m
+[95m24  : [0m[90;2m┆ [0m[36msource:[0m GitRef.[1mtree[0m[2m: Directory![0m
+[95m24  : [0m[90;2m[0m)[2m: Container![0m
+[95m24  : [0m[90;2m[0mContainer.[1mwithMountedDirectory[0m[34m CACHED[0m[90m [0.0s][0m
+
+[95m25  : [0m[90;2m[0m[34mwithWorkdir[0m /app/railway_framework
+[95m25  : [0m[90;2m[0mContainer.[1mwithWorkdir[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m26  : [0m[90;2m[0mContainer.[1mwithUnixSocket[0m(
+[95m26  : [0m[90;2m┆ [0m[36mpath:[0m [33m"/var/run/docker.sock"[0m
+[95m26  : [0m[90;2m┆ [0m[36msource:[0m Host.[1munixSocket[0m([36mpath: [0m[33m"/var/run/docker.sock"[0m)[2m: Socket![0m
+[95m26  : [0m[90;2m[0m)[2m: Container![0m
+[95m26  : [0m[90;2m[0mContainer.[1mwithUnixSocket[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m27  : [0m[90;2m[0m[34mwithEnvVariable[0m TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+[95m27  : [0m[90;2m[0mContainer.[1mwithEnvVariable[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m28  : [0m[90;2m[0m[34mwithEnvVariable[0m DOCKER_HOST=unix:///var/run/docker.sock
+[95m28  : [0m[90;2m[0mContainer.[1mwithEnvVariable[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m29  : [0m[90;2m[0m[34mwithEnvVariable[0m TESTCONTAINERS_RYUK_DISABLED=true
+[95m29  : [0m[90;2m[0mContainer.[1mwithEnvVariable[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m20  : [0m[90;2m[0m[34mwithExec[0m mvn test '-Dtest=!*IntegrationTest' -Dmaven.compiler.release=25 -Dmaven.compiler.compilerArgs=--enable-preview
+[95m20  : [0m[90;2m[0m[90m[0.4s] [0m[90m|[0m WARNING: A restricted method in java.lang.System has been called
+[95m20  : [0m[90;2m[0m[90m[0.4s] [0m[90m|[0m WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/usr/share/maven/lib/jansi-2.4.0.jar)
+[95m20  : [0m[90;2m[0m[90m[0.4s] [0m[90m|[0m WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+[95m20  : [0m[90;2m[0m[90m[0.4s] [0m[90m|[0m WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+[95m20  : [0m[90;2m[0m[90m[0.4s] [0m[90m|[0m 
+[95m20  : [0m[90;2m[0m[90m[0.8s] [0m[90m|[0m WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+[95m20  : [0m[90;2m[0m[90m[0.8s] [0m[90m|[0m WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper (file:/usr/share/maven/lib/guava-27.1-jre.jar)
+[95m20  : [0m[90;2m[0m[90m[0.8s] [0m[90m|[0m WARNING: Please consider reporting this to the maintainers of class com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper
+[95m20  : [0m[90;2m[0m[90m[0.8s] [0m[90m|[0m WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[95m20  : [0m[90;2m[0m[90m[1.7s] [0m[90m|[0m [INFO] Scanning for projects...
+[95m20  : [0m[90;2m[0m[90m[2.0s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[2.0s] [0m[90m|[0m [INFO] -----------------< es.bluesolution:railway_framework >------------------
+[95m20  : [0m[90;2m[0m[90m[2.0s] [0m[90m|[0m [INFO] Building railway_framework 0.0.1-SNAPSHOT
+[95m20  : [0m[90;2m[0m[90m[2.0s] [0m[90m|[0m [INFO] --------------------------------[ jar ]---------------------------------
+[95m20  : [0m[90;2m[0m[90m[3.0s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[3.0s] [0m[90m|[0m [INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ railway_framework ---
+[95m20  : [0m[90;2m[0m[90m[3.1s] [0m[90m|[0m [INFO] Copying 1 resource from src/main/resources to target/classes
+[95m20  : [0m[90;2m[0m[90m[3.1s] [0m[90m|[0m [INFO] Copying 3 resources from src/main/resources to target/classes
+[95m20  : [0m[90;2m[0m[90m[3.2s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[3.2s] [0m[90m|[0m [INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ railway_framework ---
+[95m20  : [0m[90;2m[0m[90m[3.4s] [0m[90m|[0m [INFO] Recompiling the module because of changed source code.
+[95m20  : [0m[90;2m[0m[90m[3.4s] [0m[90m|[0m [INFO] Compiling 401 source files with javac [debug parameters release 25] to target/classes
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ railway_framework ---
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] skip non existing resourceDirectory /app/railway_framework/src/test/resources
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ railway_framework ---
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] Recompiling the module because of changed dependency.
+[95m20  : [0m[90;2m[0m[90m[12.4s] [0m[90m|[0m [INFO] Compiling 6 source files with javac [debug parameters release 25] to target/test-classes
+[95m20  : [0m[90;2m[0m[90m[15.3s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[15.3s] [0m[90m|[0m [INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ railway_framework ---
+[95m20  : [0m[90;2m[0m[90m[15.5s] [0m[90m|[0m [INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[95m20  : [0m[90;2m[0m[90m[15.6s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[15.6s] [0m[90m|[0m [INFO] -------------------------------------------------------
+[95m20  : [0m[90;2m[0m[90m[15.6s] [0m[90m|[0m [INFO]  T E S T S
+[95m20  : [0m[90;2m[0m[90m[15.6s] [0m[90m|[0m [INFO] -------------------------------------------------------
+[95m20  : [0m[90;2m[0m[90m[17.0s] [0m[90m|[0m [INFO] Running CreateCategory Stages - Independent Testing
+[95m20  : [0m[90;2m[0m[90m[17.2s] [0m[90m|[0m Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+[95m20  : [0m[90;2m[0m[90m[17.4s] [0m[90m|[0m OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[95m20  : [0m[90;2m[0m[90m[17.5s] [0m[90m|[0m WARNING: A Java agent has been loaded dynamically (/root/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar)
+[95m20  : [0m[90;2m[0m[90m[17.5s] [0m[90m|[0m WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+[95m20  : [0m[90;2m[0m[90m[17.5s] [0m[90m|[0m WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+[95m20  : [0m[90;2m[0m[90m[17.5s] [0m[90m|[0m WARNING: Dynamic loading of agents will be disallowed by default in a future release
+[95m20  : [0m[90;2m[0m[90m[18.2s] [0m[90m|[0m [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.213 s -- in CreateCategory Stages - Independent Testing
+[95m20  : [0m[90;2m[0m[90m[18.2s] [0m[90m|[0m [INFO] Running Create Category - Comprehensive Railway-Oriented Programming Test
+[95m20  : [0m[90;2m[0m[90m[18.2s] [0m[90m|[0m [INFO] Running Command Layer - Railway-Oriented Transformation
+[95m20  : [0m[90;2m[0m[90m[18.3s] [0m[90m|[0m [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.117 s -- in Command Layer - Railway-Oriented Transformation
+[95m20  : [0m[90;2m[0m[90m[18.3s] [0m[90m|[0m [INFO] Running Domain Layer - Railway-Oriented Validation
+[95m20  : [0m[90;2m[0m[90m[18.3s] [0m[90m|[0m [INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.035 s -- in Domain Layer - Railway-Oriented Validation
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m [INFO] Running Application Layer - Railway-Oriented Stages
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in Application Layer - Railway-Oriented Stages
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m [INFO] Running End-to-End Pipeline Validation
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m 21:51:34.332 [main] WARN es.bluesolution.railway_framework.catalog.usecases.create_category.application.CreateCategoryHandler -- Failed to create category: Category name must be at least 2 characters long
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.056 s -- in End-to-End Pipeline Validation
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m [INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.248 s -- in Create Category - Comprehensive Railway-Oriented Programming Test
+[95m20  : [0m[90;2m[0m[90m[18.4s] [0m[90m|[0m [INFO] Running UpdateOrder Handler - End-to-End Testing
+[95m20  : [0m[90;2m[0m[90m[18.6s] [0m[90m|[0m 21:51:34.498 [main] WARN es.bluesolution.railway_framework.orders.usecases.update_order.application.UpdateOrderHandler -- Failed to update order: Failed to update order in database
+[95m20  : [0m[90;2m[0m[90m[18.6s] [0m[90m|[0m 21:51:34.507 [main] WARN es.bluesolution.railway_framework.orders.usecases.update_order.application.UpdateOrderHandler -- Failed to update order: Order with ID 495d62cf-c690-4538-991a-04accee2d434 not found
+[95m20  : [0m[90;2m[0m[90m[18.6s] [0m[90m|[0m [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.182 s -- in UpdateOrder Handler - End-to-End Testing
+[95m20  : [0m[90;2m[0m[90m[18.6s] [0m[90m|[0m [INFO] Running UpdateOrder Stages - Independent Testing
+[95m20  : [0m[90;2m[0m[90m[18.7s] [0m[90m|[0m [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.056 s -- in UpdateOrder Stages - Independent Testing
+[95m20  : [0m[90;2m[0m[90m[18.7s] [0m[90m|[0m [INFO] Running HttpStatusMapper - Comprehensive Error Code Coverage
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.189 s -- in HttpStatusMapper - Comprehensive Error Code Coverage
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] Results:
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] Tests run: 58, Failures: 0, Errors: 0, Skipped: 0
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] 
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] ------------------------------------------------------------------------
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] BUILD SUCCESS
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] ------------------------------------------------------------------------
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] Total time:  17.254 s
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] Finished at: 2025-11-25T21:51:34Z
+[95m20  : [0m[90;2m[0m[90m[18.9s] [0m[90m|[0m [INFO] ------------------------------------------------------------------------
+   ✅ Unit tests passed
+   📊 Running integration tests on host machine...
+   🐘 Testcontainers will use host Docker directly (no networking issues)
+
+[95m30  : [0m[90;2m[0mContainer.[1mwithDirectory[0m(
+[95m30  : [0m[90;2m┆ [0m[36mpath:[0m [33m"/app/railway_framework"[0m
+[95m30  : [0m[90;2m┆ [0m[36msource:[0m GitRef.[1mtree[0m[2m: Directory![0m
+[95m30  : [0m[90;2m[0m)[2m: Container![0m
+[95m30  : [0m[90;2m[0mContainer.[1mwithDirectory[0m[34m CACHED[0m[90m [0.0s][0m
+
+[95m31  : [0m[90;2m[0m[34mwithWorkdir[0m /app/railway_framework
+[95m31  : [0m[90;2m[0mContainer.[1mwithWorkdir[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m32  : [0m[90;2m[0mContainer.[1mwithMountedCache[0m(
+[95m32  : [0m[90;2m┆ [0m[36mpath:[0m [33m"/root/.m2"[0m
+[95m32  : [0m[90;2m┆ [0m[36mcache:[0m [1mcacheVolume[0m([36mkey: [0m[33m"maven-cache-integration"[0m)[2m: CacheVolume![0m
+[95m32  : [0m[90;2m[0m)[2m: Container![0m
+[95m32  : [0m[90;2m[0mContainer.[1mwithMountedCache[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m33  : [0m[90;2m[0mContainer.[1mwithUnixSocket[0m(
+[95m33  : [0m[90;2m┆ [0m[36mpath:[0m [33m"/var/run/docker.sock"[0m
+[95m33  : [0m[90;2m┆ [0m[36msource:[0m Host.[1munixSocket[0m([36mpath: [0m[33m"/var/run/docker.sock"[0m)[2m: Socket![0m
+[95m33  : [0m[90;2m[0m)[2m: Container![0m
+[95m33  : [0m[90;2m[0mContainer.[1mwithUnixSocket[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m34  : [0m[90;2m[0m[34mwithEnvVariable[0m TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+[95m34  : [0m[90;2m[0mContainer.[1mwithEnvVariable[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m35  : [0m[90;2m[0m[34mwithEnvVariable[0m DOCKER_HOST=unix:///var/run/docker.sock
+[95m35  : [0m[90;2m[0mContainer.[1mwithEnvVariable[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m36  : [0m[90;2m[0m[34mwithEnvVariable[0m TESTCONTAINERS_RYUK_DISABLED=true
+[95m36  : [0m[90;2m[0mContainer.[1mwithEnvVariable[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m37  : [0m[90;2m[0m[34mwithExec[0m mvn test -Pinclude-integration-tests '-Dtest=*IntegrationTest' -Dmaven.compiler.release=25 -Dmaven.compiler.compilerArgs=--enable-preview
+[95m37  : [0m[90;2m[0mContainer.[1mwithExec[0m[32m DONE[0m[90m [0.0s][0m
+
+[95m38  : [0m[90;2m[0mContainer.[1mstdout[0m[2m: String![0m
+
+[95m20  : [0m[90;2m[0mContainer.[1mwithExec[0m[32m DONE[0m[90m [19.2s][0m
+
+[95m22  : [0m[90;2m[0mContainer.[1mstdout[0m[32m DONE[0m[90m [19.2s][0m
+❌ Tests failed - stopping pipeline
+   Error: integration tests failed: exit code: 1 [traceparent:d214e44c0bc7d87f5ce1820546b36333-ddb3943284a6d757]
+ERROR: Pipeline failed: tests failed - aborting build: integration tests failed: exit code: 1 [traceparent:d214e44c0bc7d87f5ce1820546b36333-ddb3943284a6d757]
