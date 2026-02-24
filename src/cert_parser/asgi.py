@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "asgi.startup_config",
         version="0.1.0",
         log_level=settings.log_level,
-        interval_hours=settings.scheduler.interval_hours,
+        cron=settings.scheduler.cron,
         run_on_startup=settings.run_on_startup,
     )
 
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
         scheduler = create_scheduler(
             pipeline_fn=pipeline_fn,
-            interval_hours=settings.scheduler.interval_hours,
+            cron=settings.scheduler.cron,
             run_on_startup=settings.run_on_startup,
         )
     except Exception as e:
