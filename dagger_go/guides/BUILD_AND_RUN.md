@@ -6,12 +6,12 @@ Complete guide to building and running the cert-parser Python Dagger Go CI/CD pi
 
 | Goal | Command | Time |
 |------|---------|------|
-| **Unit tests only** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_INTEGRATION_TESTS=false ./run.sh` | 5-10s |
-| **Full pipeline** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | 40-60s |
-| **Corporate pipeline** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME DEBUG_CERTS && ./run-corporate.sh` | 40-60s |
-| **Integration only** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=false ./run.sh` | 30-45s |
-| **Default (smart)** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh` | 40-60s |
-| **Test code** | `cd dagger_go && set -a && source ../credentials/.env && set +a && go test -v` | 30-60s |
+| **Unit tests only** | `set -a && source credentials/.env && set +a && RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 5-10s |
+| **Full pipeline** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | 40-60s |
+| **Corporate pipeline** | `set -a && source credentials/.env && set +a && DEBUG_CERTS=$DEBUG_CERTS ./run-corporate.sh` | 40-60s |
+| **Integration only** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 30-45s |
+| **Default (smart)** | `set -a && source credentials/.env && set +a && ./run.sh` | 40-60s |
+| **Test code** | `cd dagger_go && set -a && source credentials/.env && set +a && go test -v` | 30-60s |
 | **Build binary** | `cd dagger_go && go build -o cert-parser-dagger-go main.go` | 5-10s |
 | **Build corporate** | `cd dagger_go && go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go` | 5-10s |
 | **Debug** | VSC F5 → Debug Dagger Go | Live |
@@ -55,7 +55,7 @@ cat credentials/.env        # Should show CR_PAT=... USERNAME=...
 
 ```bash
 cd dagger_go
-set -a && source ../credentials/.env && set +a && go test -v
+set -a && source credentials/.env && set +a && go test -v
 ```
 
 **What happens:**
@@ -112,7 +112,7 @@ cert-parser-dagger-go: ELF 64-bit LSB executable, x86-64
 - ✅ Pure Go compilation (no dependencies needed after download)
 - ❌ Does NOT require Docker
 - Binary ready for server deployment
-- Run with credentials: `set -a && source ../credentials/.env && set +a && ./cert-parser-dagger-go`
+- Run with credentials: `set -a && source credentials/.env && set +a && ./cert-parser-dagger-go`
 
 ---
 
@@ -124,26 +124,26 @@ cert-parser-dagger-go: ELF 64-bit LSB executable, x86-64
 
 ```bash
 # Full suite (unit + integration tests)
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh
+set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh
 
 # Unit tests only (fast: 5-10 seconds, no Docker required)
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_INTEGRATION_TESTS=false ./run.sh
+set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_INTEGRATION_TESTS=false ./run.sh
 
 # Integration tests only (30-45 seconds, requires Docker)
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=false ./run.sh
+set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=false ./run.sh
 
 # Default (full suite with smart Docker detection)
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh
+set -a && source credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh
 ```
 
 **Test Matrix:**
 
 | Scenario | Command | Tests | Time | Docker |
 |----------|---------|-------|------|--------|
-| Full (default) | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | Unit + Integration | 40-60s | Optional |
-| Unit only | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_INTEGRATION_TESTS=false ./run.sh` | Unit | 5-10s | No |
-| Integration | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=false ./run.sh` | Integration | 30-45s | Yes |
-| Auto-degrade | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh` (no Docker) | Unit | 5-10s | No |
+| Full (default) | `set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | Unit + Integration | 40-60s | Optional |
+| Unit only | `set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_INTEGRATION_TESTS=false ./run.sh` | Unit | 5-10s | No |
+| Integration | `set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=false ./run.sh` | Integration | 30-45s | Yes |
+| Auto-degrade | `set -a && source credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh` (no Docker) | Unit | 5-10s | No |
 
 **How it works:**
 
@@ -209,7 +209,7 @@ Full tests on main:
 
 ```bash
 cd dagger_go
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh
+set -a && source credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh
 ```
 
 **What happens:**
@@ -259,8 +259,7 @@ Image: ghcr.io/username/cert-parser:v0.1.0-abc1234-20260224-1030
 **Command:**
 
 ```bash
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME DEBUG_CERTS && ./run-corporate.shcd dagger_go
-
+set -a && source credentials/.env && set +a && ./run-corporate.sh
 ```
 
 **What's Different:**
@@ -474,7 +473,7 @@ chmod +x dagger_go/test.sh
 
 # Try again
 cd dagger_go
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh
+set -a && source credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh
 ```
 
 ### Error: "No such file or directory: ./run.sh"
@@ -563,9 +562,9 @@ After these commands complete, `go.sum` will be updated and the build will succe
 ## Next Steps
 
 1. ✅ Verify prerequisites (Go, Docker, credentials/.env)
-2. ✅ Test code: `cd dagger_go && set -a && source ../credentials/.env && set +a && go test -v`
+2. ✅ Test code: `cd dagger_go && set -a && source credentials/.env && set +a && go test -v`
 3. ✅ Build binary: `cd dagger_go && go mod download dagger.io/dagger && go build -o cert-parser-dagger-go main.go`
-4. ✅ Run pipeline: `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh`
+4. ✅ Run pipeline: `set -a && source credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh`
 5. ✅ Monitor logs in Dagger Cloud (link provided in output)
 6. ✅ Check image in GitHub Container Registry
 

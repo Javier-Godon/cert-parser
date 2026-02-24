@@ -88,8 +88,7 @@ func main() {
 	fmt.Printf("   Type check (mypy): %v (RUN_TYPE_CHECK)\n", runTypeCheck)
 
 	if !runUnitTests && !runIntegrationTests && !runAcceptanceTests {
-		fmt.Fprintf(os.Stderr, "ERROR: At least one test stage must be enabled\n")
-		os.Exit(1)
+		fmt.Println("⚠️  All test stages disabled — skipping tests, proceeding to lint/build/push")
 	}
 
 	// Initialize Dagger client

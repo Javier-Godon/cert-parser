@@ -37,13 +37,9 @@ echo "   GitHub User: $USERNAME"
 echo "   Branch: ${GIT_BRANCH:-main}"
 echo ""
 
-# Check if binary exists, build if not
-if [ ! -f ./cert-parser-dagger-go ]; then
-    echo "📦 Building pipeline binary..."
-    go mod download dagger.io/dagger
-    go mod tidy
-    go build -o cert-parser-dagger-go main.go
-fi
+# Always rebuild the binary to ensure it reflects the latest source
+echo "📦 Building pipeline binary..."
+go build -o cert-parser-dagger-go main.go
 
 # Run the pipeline binary
 ./cert-parser-dagger-go

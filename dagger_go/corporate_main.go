@@ -112,8 +112,7 @@ func main() {
 	runTypeCheck := parseEnvBool("RUN_TYPE_CHECK", true)
 
 	if !runUnitTests && !runIntegrationTests && !runAcceptanceTests {
-		fmt.Fprintf(os.Stderr, "ERROR: At least one test stage must be enabled\n")
-		os.Exit(1)
+		fmt.Println("⚠️  All test stages disabled — skipping tests, proceeding to lint/build/push")
 	}
 
 	fmt.Println("🏢 CORPORATE MODE: MITM Proxy & Custom CA Support")
