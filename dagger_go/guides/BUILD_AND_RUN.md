@@ -6,6 +6,7 @@ Complete guide to building and running the cert-parser Python Dagger Go CI/CD pi
 
 | Goal | Command | Time |
 |------|---------|------|
+| **Skip all tests** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh`
 | **Unit tests only** | `set -a && source credentials/.env && set +a && RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 5-10s |
 | **Full pipeline** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | 40-60s |
 | **Corporate pipeline** | `set -a && source credentials/.env && set +a && DEBUG_CERTS=$DEBUG_CERTS ./run-corporate.sh` | 40-60s |

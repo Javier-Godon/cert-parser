@@ -23,19 +23,6 @@ import uuid
 import warnings
 
 import structlog
-
-# Silence the CryptographyDeprecationWarning at the stdlib level so it never
-# reaches stderr.  We re-emit it as a structured log event inside
-# _der_to_certificate_record() with full certificate context (issuer, serial),
-# giving us an actionable audit trail of every affected ICAO certificate.
-# When cryptography eventually starts *rejecting* these certs (not just warning),
-# the log will tell us exactly which countries/issuers are impacted.
-warnings.filterwarnings(
-    "ignore",
-    message=".*NULL parameter value.*signature algorithm.*",
-    category=DeprecationWarning,
-)
-
 from asn1crypto import cms, core
 from asn1crypto import x509 as asn1_x509
 from cryptography import x509
@@ -48,6 +35,18 @@ from cert_parser.domain.models import (
     CrlRecord,
     MasterListPayload,
     RevokedCertificateRecord,
+)
+
+# Silence the CryptographyDeprecationWarning at the stdlib level so it never
+# reaches stderr.  We re-emit it as a structured log event inside
+# _der_to_certificate_record() with full certificate context (issuer, serial),
+# giving us an actionable audit trail of every affected ICAO certificate.
+# When cryptography eventually starts *rejecting* these certs (not just warning),
+# the log will tell us exactly which countries/issuers are impacted.
+warnings.filterwarnings(
+    "ignore",
+    message=".*NULL parameter value.*signature algorithm.*",
+    category=DeprecationWarning,
 )
 
 log = structlog.get_logger()
