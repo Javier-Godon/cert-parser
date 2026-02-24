@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory now contains comprehensive documentation about integrating Docker and Testcontainers with Dagger for the Railway Framework CI/CD pipeline.
+This directory now contains comprehensive documentation about integrating Docker and Testcontainers with Dagger for the cert-parser CI/CD pipeline.
 
 ## Documents Created
 
@@ -85,7 +85,7 @@ dagger call test
 
 ### Phase 2: Integration (1 day)
 - Add to CI/CD pipeline
-- Test with Railway modules
+- Test with cert-parser modules
 - Document for team
 
 ### Phase 3: Optimization (Ongoing)
@@ -154,7 +154,7 @@ START HERE:
 1. Proven in production (Daggerverse ecosystem)
 2. Simple to implement (1 line of code)
 3. Safe in CI/CD context (industry standard)
-4. Supports all Railway needs (multi-module, containers)
+4. Supports all cert-parser needs (multi-module, containers)
 5. Team already has Dagger pipeline (easy to add)
 
 ---
@@ -163,8 +163,8 @@ START HERE:
 
 1. ✅ **Review** one of the three documents above
 2. ✅ **Validate** by running QUICK_START on local machine
-3. ✅ **Implement** in Railway's dagger_go/main.go
-4. ✅ **Test** with existing Railway test suite
+3. ✅ **Implement** in cert-parser's dagger_go/main.go
+4. ✅ **Test** with existing cert-parser test suite
 5. ✅ **Deploy** to CI/CD pipeline
 
 ---
@@ -194,7 +194,7 @@ dagger_go/
 
 ### Related Railway Documentation
 - `.github/instructions/` - Architecture and coding standards
-- `railway_framework/` - Main application code
+- `python_framework/` - Main application code
 - `deployment/` - Infrastructure setup
 
 ---

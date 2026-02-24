@@ -32,15 +32,15 @@ go test -v -run Test
 # Build the binary
 echo ""
 echo "🔨 Building $PROJECT_NAME pipeline binary..."
-go build -o railway-dagger-go main.go
+go build -o cert-parser-dagger-go main.go
 
 echo ""
 echo "✅ Build successful!"
-echo "   Binary: ./railway-dagger-go"
+echo "   Binary: ./cert-parser-dagger-go"
 echo ""
 echo "📖 To run the full pipeline:"
 echo "   export CR_PAT=<your-github-token>"
 echo "   export USERNAME=<your-github-username>"
 echo "   export REPO_NAME=$PROJECT_NAME"
-echo "   ./railway-dagger-go"
+echo "   ./cert-parser-dagger-go"
 echo "   ./railway-dagger-go"

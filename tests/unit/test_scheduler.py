@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from apscheduler.triggers.cron import CronTrigger
 from railway import ErrorCode
 from railway.result import Result
 
@@ -25,11 +26,23 @@ class TestCreateScheduler:
         THEN the returned scheduler has exactly one job configured.
         """
         pipeline_fn = MagicMock(return_value=Result.success(5))
-        scheduler = create_scheduler(pipeline_fn, interval_hours=12, run_on_startup=False)
+        scheduler = create_scheduler(pipeline_fn, cron="0 */12 * * *", run_on_startup=False)
 
         jobs = scheduler.get_jobs()
         assert len(jobs) == 1
         assert jobs[0].id == "cert_parser_sync"
+
+    def test_uses_cron_trigger(self) -> None:
+        """
+        GIVEN a cron expression
+        WHEN create_scheduler is called
+        THEN the job trigger is a CronTrigger (not IntervalTrigger).
+        """
+        pipeline_fn = MagicMock(return_value=Result.success(5))
+        scheduler = create_scheduler(pipeline_fn, cron="0 2 * * *", run_on_startup=False)
+
+        job = scheduler.get_jobs()[0]
+        assert isinstance(job.trigger, CronTrigger)
 
     def test_run_on_startup_executes_pipeline_immediately(self) -> None:
         """

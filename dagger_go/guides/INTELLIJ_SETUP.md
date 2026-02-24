@@ -6,7 +6,7 @@ This guide explains how to configure IntelliJ IDEA to work with both Java (Sprin
 
 ### Step 1: Open Java Project First
 ```
-IntelliJ IDEA → Open → /path/to/railway_oriented_java
+IntelliJ IDEA → Open → /path/to/cert-parser
 ```
 
 ### Step 2: Attach Go Module
@@ -26,8 +26,8 @@ File → Project Structure → SDKs → [+] Add SDK
 
 Result:
 ```
-railway_oriented_java (Project Root)
-├── railway_framework (Java Module)
+cert-parser (Project Root)
+├── python_framework (Java Module)
 ├── dagger_go (Go Module)
 └── .idea/ (Workspace config)
 ```
@@ -53,7 +53,7 @@ Window → New Window → Open Directory...
 ```
 
 This allows having multiple IntelliJ windows:
-- Window 1: `railway_oriented_java` (Java/Spring Boot)
+- Window 1: `cert-parser` (Java/Spring Boot)
 - Window 2: `dagger_go` (Go/Dagger)
 
 ## Run Configurations
@@ -130,7 +130,7 @@ For advanced setup, you could configure Maven to:
 
 This requires:
 ```xml
-<!-- In railway_framework/pom.xml -->
+<!-- In python_framework/pom.xml -->
 <plugin>
     <groupId>org.codehaus.mojo</groupId>
     <artifactId>exec-maven-plugin</artifactId>
@@ -167,7 +167,7 @@ Git window shows:
 │   ├── go.mod (modified)
 │   ├── go.sum (modified)
 │   └── main.go (modified)
-├── railway_framework/
+├── python_framework/
 │   └── pom.xml (modified)
 ```
 
@@ -221,7 +221,7 @@ brew install direnv
 eval "$(direnv hook zsh)"
 ```
 
-Then create `railway_oriented_java/.envrc`:
+Then create `cert-parser/.envrc`:
 
 ```bash
 # Java setup
@@ -240,7 +240,7 @@ export USERNAME="<your-username>"
 Then IntelliJ automatically inherits these when opened in the project:
 
 ```bash
-cd railway_oriented_java
+cd cert-parser
 direnv allow
 idea .
 ```

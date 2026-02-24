@@ -63,7 +63,7 @@
 
 ### Standard Pipeline Test
 ```bash
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./railway-dagger-go
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./cert-parser-dagger-go
 ```
 
 **Output:**
@@ -95,15 +95,15 @@ PIPELINE STAGE 2: BUILD ARTIFACT
 PIPELINE STAGE 3: BUILD DOCKER IMAGE
 ================================================================================
 ✅ Images published:
-   📦 Versioned: ghcr.io/javier-godon/railway-oriented-java:v1.0.0-e46812e
-   📦 Latest: ghcr.io/javier-godon/railway-oriented-java:latest
+   📦 Versioned: ghcr.io/javier-godon/cert-parser:v1.0.0-e46812e
+   📦 Latest: ghcr.io/javier-godon/cert-parser:latest
 
 🎉 Pipeline completed successfully!
 ```
 
 ### Corporate Pipeline Test
 ```bash
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./railway-corporate-dagger-go
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./cert-parser-corporate-dagger-go
 ```
 
 **Output:**
@@ -149,12 +149,12 @@ PIPELINE STAGE 1: TEST EXECUTION
 
 **Standard Pipeline:**
 ```bash
-go build -o railway-dagger-go main.go
+go build -o cert-parser-dagger-go main.go
 ```
 
 **Corporate Pipeline:**
 ```bash
-go build -o railway-corporate-dagger-go -tags=corporate corporate_main.go main.go
+go build -o cert-parser-corporate-dagger-go -tags=corporate corporate_main.go main.go
 ```
 
 ## 🎯 Key Achievements
@@ -172,25 +172,25 @@ go build -o railway-corporate-dagger-go -tags=corporate corporate_main.go main.g
 ### Run All Tests (Both Pipelines)
 ```bash
 # Standard
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./railway-dagger-go
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./cert-parser-dagger-go
 
 # Corporate
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./railway-corporate-dagger-go
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./cert-parser-corporate-dagger-go
 ```
 
 ### Run Only Unit Tests
 ```bash
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./railway-dagger-go
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./cert-parser-dagger-go
 ```
 
 ### Run Only Integration Tests
 ```bash
-RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=true ./railway-dagger-go
+RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=true ./cert-parser-dagger-go
 ```
 
 ### Corporate with Debug Mode
 ```bash
-DEBUG_CERTS=true RUN_UNIT_TESTS=true ./railway-corporate-dagger-go
+DEBUG_CERTS=true RUN_UNIT_TESTS=true ./cert-parser-corporate-dagger-go
 ```
 
 ## 🚀 Next Steps

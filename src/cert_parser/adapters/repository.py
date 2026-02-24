@@ -37,20 +37,27 @@ from cert_parser.domain.models import (
 
 log = structlog.get_logger()
 
-_INSERT_CERT = """
-INSERT INTO {table} (
+_INSERT_ROOT_CA = """
+INSERT INTO certs.root_ca (
+    id, certificate, subject_key_identifier, authority_key_identifier,
+    issuer, master_list_issuer, x_500_issuer, source, isn, updated_at
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+"""
+
+_INSERT_DSC = """
+INSERT INTO certs.dsc (
     id, certificate, subject_key_identifier, authority_key_identifier,
     issuer, x_500_issuer, source, isn, updated_at
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 _INSERT_CRL = """
-INSERT INTO crls (id, crl, source, issuer, country, updated_at)
+INSERT INTO certs.crls (id, crl, source, issuer, country, updated_at)
 VALUES (%s, %s, %s, %s, %s, %s)
 """
 
 _INSERT_REVOKED = """
-INSERT INTO revoked_certificate_list (
+INSERT INTO certs.revoked_certificate_list (
     id, source, country, isn, crl, revocation_reason, revocation_date, updated_at
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
 """
@@ -102,30 +109,53 @@ class PsycopgCertificateRepository:
 
     def _delete_all(self, cur: psycopg.Cursor[Any]) -> None:
         """Delete all rows in FK-safe order: child → parent."""
-        cur.execute("DELETE FROM revoked_certificate_list")
-        cur.execute("DELETE FROM crls")
-        cur.execute("DELETE FROM dsc")
-        cur.execute("DELETE FROM root_ca")
+        cur.execute("DELETE FROM certs.revoked_certificate_list")
+        cur.execute("DELETE FROM certs.crls")
+        cur.execute("DELETE FROM certs.dsc")
+        cur.execute("DELETE FROM certs.root_ca")
 
     def _insert_all(self, cur: psycopg.Cursor[Any], payload: MasterListPayload) -> int:
         """Insert all records from the payload, returning total row count."""
         rows = 0
-        rows += self._insert_certs(cur, "root_ca", payload.root_cas)
-        rows += self._insert_certs(cur, "dsc", payload.dscs)
+        rows += self._insert_root_cas(cur, payload.root_cas)
+        rows += self._insert_dscs(cur, payload.dscs)
         rows += self._insert_crls(cur, payload.crls)
         rows += self._insert_revoked(cur, payload.revoked_certificates)
         return rows
 
-    def _insert_certs(
+    def _insert_root_cas(
         self,
         cur: psycopg.Cursor[Any],
-        table: str,
         certs: list[CertificateRecord],
     ) -> int:
-        """Insert certificate records into the specified table (root_ca or dsc)."""
+        """Insert root CA certificate records (includes master_list_issuer)."""
         for cert in certs:
             cur.execute(
-                _INSERT_CERT.format(table=table),
+                _INSERT_ROOT_CA,
+                (
+                    cert.id,
+                    cert.certificate,
+                    cert.subject_key_identifier,
+                    cert.authority_key_identifier,
+                    cert.issuer,
+                    cert.master_list_issuer,
+                    cert.x_500_issuer,
+                    cert.source,
+                    cert.isn,
+                    cert.updated_at,
+                ),
+            )
+        return len(certs)
+
+    def _insert_dscs(
+        self,
+        cur: psycopg.Cursor[Any],
+        certs: list[CertificateRecord],
+    ) -> int:
+        """Insert DSC certificate records."""
+        for cert in certs:
+            cur.execute(
+                _INSERT_DSC,
                 (
                     cert.id,
                     cert.certificate,

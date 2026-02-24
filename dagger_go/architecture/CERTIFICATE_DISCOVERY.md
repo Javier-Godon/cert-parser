@@ -104,7 +104,7 @@ Add this diagnostic function to `dagger_go/main.go`:
 
 ```go
 // discoverCorporateCerts creates a diagnostic container to identify missing CAs
-func (p *RailwayPipeline) discoverCorporateCerts(ctx context.Context, client *dagger.Client, debugMode bool) error {
+func (p *Pipeline) discoverCorporateCerts(ctx context.Context, client *dagger.Client, debugMode bool) error {
 	if !debugMode {
 		return nil // Skip if not in debug mode
 	}

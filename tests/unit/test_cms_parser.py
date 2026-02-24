@@ -746,3 +746,56 @@ class TestExtractSkiAkiEdgeCases:
             .sign(key, hashes.SHA256())
         )
         assert _extract_aki(cert) is None
+
+
+# ─────────────────────── Master List Issuer Extraction ───────────────────────
+
+
+class TestMasterListIssuerExtraction:
+    """Verify that master_list_issuer is extracted from the CMS SignerInfo."""
+
+    def test_seychelles_certificates_have_master_list_issuer(
+        self, parser: CmsMasterListParser,
+    ) -> None:
+        """
+        GIVEN ml_sc.bin (Seychelles Master List)
+        WHEN parsed
+        THEN all root CA certificates have a non-None master_list_issuer.
+        """
+        raw_bin = fixture_path("ml_sc.bin").read_bytes()
+        result = parser.parse(raw_bin)
+        payload = ResultAssertions.assert_success(result)
+        for cert in payload.root_cas:
+            assert cert.master_list_issuer is not None, (
+                f"Certificate {cert.issuer} missing master_list_issuer"
+            )
+
+    def test_france_certificates_have_master_list_issuer(
+        self, parser: CmsMasterListParser,
+    ) -> None:
+        """
+        GIVEN ml_fr.bin (France Master List)
+        WHEN parsed
+        THEN all root CA certificates have a non-None master_list_issuer.
+        """
+        raw_bin = fixture_path("ml_fr.bin").read_bytes()
+        result = parser.parse(raw_bin)
+        payload = ResultAssertions.assert_success(result)
+        assert len(payload.root_cas) > 0
+        for cert in payload.root_cas:
+            assert cert.master_list_issuer is not None
+
+    def test_composite_certificates_have_master_list_issuer(
+        self, parser: CmsMasterListParser,
+    ) -> None:
+        """
+        GIVEN ml_composite.bin (synthetic multi-country Master List)
+        WHEN parsed
+        THEN all root CA certificates have a non-None master_list_issuer.
+        """
+        raw_bin = fixture_path("ml_composite.bin").read_bytes()
+        result = parser.parse(raw_bin)
+        payload = ResultAssertions.assert_success(result)
+        assert len(payload.root_cas) > 0
+        for cert in payload.root_cas:
+            assert cert.master_list_issuer is not None

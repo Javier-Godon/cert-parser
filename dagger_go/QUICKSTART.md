@@ -1,14 +1,14 @@
 # Dagger Go Module - Quick Start Guide
 
-## 🚀 What Was Created
+## 🚀 What This Is
 
-A complete **Dagger Go SDK v0.19.7** CI/CD pipeline module that mirrors your `dagger_python` implementation but with:
+A complete **Dagger Go SDK v0.19.7** CI/CD pipeline for **cert-parser** (Python 3.14+) with:
 
 - ✅ **Type-safe Go implementation**
 - ✅ **Single compiled executable** (no runtime dependencies)
 - ✅ **Better performance** (~100ms vs 1s startup)
-- ✅ **Native IntelliJ IDEA support**
-- ✅ **Full Java 25 + Spring Boot 4.0 support**
+- ✅ **Python 3.14 + pytest + mypy + ruff support**
+- ✅ **Testcontainers (PostgreSQL) support for integration/acceptance tests**
 
 ## 📁 Module Structure
 
@@ -67,14 +67,14 @@ cd dagger_go
 
 Expected output:
 ```
-🧪 Testing Railway Dagger Go CI/CD Pipeline...
+🧪 Testing cert-parser Dagger Go CI/CD Pipeline...
 ✅ Go version: go1.22.x
 📦 Downloading Go dependencies...
 🧪 Running unit tests...
 === RUN   TestProjectRootDiscovery
 === RUN   TestEnvironmentVariables
 ✅ Build successful!
-   Binary: ./railway-dagger-go
+   Binary: ./cert-parser-dagger-go
 ```
 
 ## 🔧 Full Pipeline Execution
@@ -82,15 +82,12 @@ Expected output:
 ### Using credentials/.env (Recommended)
 
 ```bash
-# credentials/.env contains CR_PAT and USERNAME
-# Load environment and run
 set -a
 source credentials/.env
 set +a
 
 # Optional overrides
-export REPO_NAME="railway_oriented_java"
-export IMAGE_NAME="railway_framework"
+export REPO_NAME="cert-parser"
 
 # Run the complete pipeline
 ./run.sh
@@ -101,33 +98,33 @@ export IMAGE_NAME="railway_framework"
 ```bash
 export CR_PAT="ghp_xxxxxxxxxxxx"
 export USERNAME="your-github-username"
-export REPO_NAME="railway_oriented_java"
-export IMAGE_NAME="railway_framework"
+export REPO_NAME="cert-parser"
 
 ./run.sh
 ```
 
 This will:
-1. ✅ Find your Maven project (railway_framework)
-2. ✅ Compile Java 25 code with preview features
-3. ✅ Run unit tests (58 tests)
-4. ✅ Run integration tests with Testcontainers (12 PostgreSQL-based tests)
-5. ✅ Build Docker image (multi-stage)
-6. ✅ Publish to GitHub Container Registry
-7. ✅ Create version + latest tags
+1. ✅ Clone your repo and discover project name from `pyproject.toml`
+2. ✅ Install `python_framework` (local dependency) + project in dev+server mode
+3. ✅ Run unit tests (`pytest -m "not integration and not acceptance"`)
+4. ✅ Run integration tests on host (`pytest -m integration`, testcontainers/PostgreSQL)
+5. ✅ Run acceptance tests on host (`pytest -m acceptance`, testcontainers/PostgreSQL)
+6. ✅ Lint with `ruff check src/ tests/`
+7. ✅ Type-check with `mypy src/ --strict`
+8. ✅ Build Docker image
+9. ✅ Publish to GitHub Container Registry (versioned + latest tags)
 
-## 📊 Comparison: Python vs Go
+## 📊 Pipeline Stages
 
-| Feature | Python (`dagger_python`) | Go (`dagger_go`) |
-|---------|-------------------------|-----------------|
-| **Startup** | ~1 second | ~100ms |
-| **Type Safety** | Runtime errors | Compile-time errors |
-| **Complexity** | `async`/`await` | Simple functions + context |
-| **File Size** | 20+ MB (with interpreter) | ~15 MB (binary) |
-| **IDE Support** | Limited | Excellent |
-| **Testing** | pytest | go test |
-| **Deployment** | Requires Python | Single executable |
-| **Performance** | ~30 builds/day | ~60 builds/day |
+| Stage | Location | Tool | Flag |
+|-------|----------|------|------|
+| Unit tests | Dagger container | `pytest -m "not integration and not acceptance"` | `RUN_UNIT_TESTS` |
+| Integration tests | Host machine | `pytest -m integration` | `RUN_INTEGRATION_TESTS` |
+| Acceptance tests | Host machine | `pytest -m acceptance` | `RUN_ACCEPTANCE_TESTS` |
+| Lint | Dagger container | `ruff check src/ tests/` | `RUN_LINT` |
+| Type check | Dagger container | `mypy src/ --strict` | `RUN_TYPE_CHECK` |
+| Docker build | Dagger | `DockerBuild()` | always |
+| Publish to GHCR | Dagger | `image.Publish()` | always |
 | **Docker Tests** | Manual config | Auto with Testcontainers |
 
 ## 🎯 Use Cases
@@ -157,14 +154,15 @@ defer client.Close()
 ### 2. Container Building
 ```go
 client.Container().
-    From("amazoncorretto:25.0.1").
-    WithExec([]string{"mvn", "clean", "package"})
+    From("python:3.14-slim").
+    WithExec([]string{"pip", "install", "-e", "./python_framework"}).
+    WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
 ```
 
 ### 3. Caching
 ```go
-mavenCache := client.CacheVolume("maven-cache")
-container.WithMountedCache("/root/.m2", mavenCache)
+pipCache := client.CacheVolume("pip-cache-cert-parser")
+container.WithMountedCache("/root/.cache/pip", pipCache)
 ```
 
 ### 4. Image Publishing
@@ -179,8 +177,8 @@ image.
 | Document | Purpose |
 |----------|---------|
 | **README.md** | Overview, features, setup instructions |
-| **DAGGER_GO_SDK.md** | Complete SDK reference (APIs, patterns, best practices) |
-| **INTELLIJ_SETUP.md** | IDE configuration for mixed Java/Go workspace |
+| **guides/BUILD_AND_RUN.md** | Complete build and run guide |
+| **guides/PIPELINE_INTERNALS.md** | Deep technical details |
 
 ## 🔍 IntelliJ IDEA Integration
 
@@ -199,9 +197,9 @@ File → Project Structure → Modules → [+]
 ### Run Configuration
 ```
 Run → Edit Configurations → [+] → Go
-Name: Railway Dagger Pipeline
+Name: cert-parser Dagger Pipeline
 Directory: dagger_go
-Environment: CR_PAT, USERNAME
+Environment: CR_PAT, USERNAME, REPO_NAME
 ```
 
 ## 🚀 Production Deployment
@@ -209,7 +207,7 @@ Environment: CR_PAT, USERNAME
 ### GitHub Actions Workflow
 
 ```yaml
-name: Build Railway with Dagger Go
+name: cert-parser CI/CD
 
 on: [push]
 
@@ -221,12 +219,13 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '1.22'
-      - run: cd dagger_go && go build -o railway-dagger-go
+      - run: cd dagger_go && go build -o cert-parser-dagger-go main.go
       - name: Run pipeline
         env:
           CR_PAT: ${{ secrets.CR_PAT }}
           USERNAME: ${{ github.actor }}
-        run: ./dagger_go/railway-dagger-go
+          REPO_NAME: cert-parser
+        run: ./dagger_go/cert-parser-dagger-go
 ```
 
 ## 🧪 Testing
@@ -281,48 +280,40 @@ Using Dagger Go instead of Python:
 Before deployment:
 
 - [ ] Go 1.22+ installed
-- [ ] Dagger CLI installed
 - [ ] Docker daemon running
 - [ ] GitHub token (CR_PAT) available with write:packages scope
 - [ ] GitHub username set in environment
 - [ ] Ran `./test.sh` successfully
-- [ ] IntelliJ IDEA configured (if using IDE)
 - [ ] credentials/.env file created with CR_PAT and USERNAME
 
 ## 🧪 Test Modes
 
-The pipeline supports three independent test modes via environment variables:
+The pipeline supports independent test stages via environment variables:
 
-### Unit Tests Only (Default)
+### Unit Tests Only (fast — runs in Dagger container)
 ```bash
-set -a
-source credentials/.env
-set +a
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./railway-dagger-go
-# Runs 58 unit tests (no Docker required)
+set -a && source credentials/.env && set +a
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./cert-parser-dagger-go
+# No Docker required for unit tests
 ```
 
-### Full Suite (Unit + Integration)
+### Full Suite (Unit + Integration + Acceptance)
 ```bash
-set -a
-source credentials/.env
-set +a
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./railway-dagger-go
-# Runs 70 tests: 58 unit + 12 integration (PostgreSQL with Testcontainers)
-# Requires Docker daemon running
+set -a && source credentials/.env && set +a
+RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true RUN_ACCEPTANCE_TESTS=true ./cert-parser-dagger-go
+# Integration/acceptance tests run on HOST, require Docker for testcontainers
 ```
 
 ### Integration Tests Only
 ```bash
-set -a
-source credentials/.env
-set +a
-RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=true ./railway-dagger-go
-# Runs 12 integration tests with PostgreSQL testcontainer
+set -a && source credentials/.env && set +a
+RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=true RUN_ACCEPTANCE_TESTS=false ./cert-parser-dagger-go
 # Requires Docker daemon running
 ```
 
-**Note**: Integration tests automatically skip if Docker socket is not available.
+**Note**: Integration and acceptance tests run on the HOST machine (not inside the Dagger
+container). This is required because testcontainers needs native Docker socket access.
+They are automatically skipped if Docker is unavailable.
 
 ## 🎉 Next Steps
 
@@ -337,10 +328,10 @@ RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=true ./railway-dagger-go
 
 If issues arise:
 
-1. Check **INTELLIJ_SETUP.md** for IDE problems
-2. Check **DAGGER_GO_SDK.md** for SDK/API questions
+1. Check **guides/BUILD_AND_RUN.md** for execution problems
+2. Check **architecture/DAGGER_GO_SDK.md** for SDK/API questions
 3. Review **README.md** for pipeline documentation
-4. Run with verbose output: `dagger functions --verbose`
+4. Run tests locally: `go test -v`
 5. Check Dagger Discord for community help
 
 ---
@@ -348,4 +339,4 @@ If issues arise:
 **Status**: ✅ Ready for Production
 **Version**: Dagger SDK v0.19.7 (Nov 20, 2025)
 **Go Version**: 1.22+
-**Java Support**: Java 25 with preview features
+**Python Support**: Python 3.14+ with pytest, mypy, ruff

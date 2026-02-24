@@ -133,7 +133,7 @@ Host Machine
 ```go
 // In dagger_go/main.go
 
-func (p *RailwayPipeline) run(ctx context.Context, client *dagger.Client) error {
+func (p *Pipeline) run(ctx context.Context, client *dagger.Client) error {
     const baseImage = "amazoncorretto:25.0.1"
 
     p.MavenCache = client.CacheVolume("maven-cache")
@@ -148,7 +148,7 @@ func (p *RailwayPipeline) run(ctx context.Context, client *dagger.Client) error 
         WithExec([]string{"yum", "install", "-y", "maven", "git", "docker"}).
         WithMountedCache("/root/.m2", p.MavenCache).
         WithMountedDirectory("/app", source).
-        WithWorkdir("/app/railway_framework")
+        WithWorkdir("/app/python_framework")
 
     // ✅ KEY CHANGE: Mount host Docker socket
     if dockerSocket := os.Getenv("DOCKER_HOST"); dockerSocket != "" {
@@ -215,7 +215,7 @@ Dagger Pipeline Stage 3: Build artifact
 
 **Implementation:**
 ```go
-func (p *RailwayPipeline) run(ctx context.Context, client *dagger.Client) error {
+func (p *Pipeline) run(ctx context.Context, client *dagger.Client) error {
     // ... setup code ...
 
     // Stage 1: Run ONLY unit tests (fast, no Docker)
@@ -242,7 +242,7 @@ func (p *RailwayPipeline) run(ctx context.Context, client *dagger.Client) error 
         `cd /app/deployment/docker-compose && \
          docker-compose -f docker-compose.dev.yml up -d && \
          sleep 30 && \
-         cd /app/railway_framework && \
+         cd /app/python_framework && \
          mvn test -Dgroups=integration -q && \
          RESULT=$? && \
          cd /app/deployment/docker-compose && \
@@ -293,7 +293,7 @@ Build artifact regardless
 
 **Implementation:**
 ```go
-func (p *RailwayPipeline) run(ctx context.Context, client *dagger.Client) error {
+func (p *Pipeline) run(ctx context.Context, client *dagger.Client) error {
     // ... setup ...
 
     // Detect if Docker is available
@@ -366,7 +366,7 @@ class CatalogRepositoryImplIntegrationTest {
     static class IntegrationTestConfig {
         static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
             DockerImageName.parse("postgres:16-alpine")
-        ).withDatabaseName("railway_test");
+        ).withDatabaseName("cert_parser_test");
 
         @DynamicPropertySource
         static void configureProperties(DynamicPropertyRegistry registry) {
@@ -411,7 +411,7 @@ const (
     baseImage = "amazoncorretto:25.0.1"
 )
 
-func (p *RailwayPipeline) run(ctx context.Context, client *dagger.Client) error {
+func (p *Pipeline) run(ctx context.Context, client *dagger.Client) error {
     // Mount Docker socket for testcontainers
     builder := setupBuilder(client, baseImage)
 

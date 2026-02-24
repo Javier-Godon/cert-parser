@@ -1,0 +1,20 @@
+{
+  "pythonVersion": "3.14",
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": [
+    "src",
+    "python_framework/src"
+  ],
+  "include": [
+    "src",
+    "tests",
+    "python_framework/src"
+  ],
+  "exclude": [
+    ".venv",
+    "**/__pycache__"
+  ],
+  "typeCheckingMode": "standard"
+}
+

@@ -19,7 +19,7 @@ dagger_go/
 ├── corporate_main.go       # ← New corporate version (added)
 ├── run.sh                  # ← Original script (UNCHANGED)
 ├── run-corporate.sh        # ← New corporate script (added)
-└── railway-dagger-go       # Binary (either version)
+└── cert-parser-dagger-go       # Binary (either version)
 ```
 
 ---
@@ -357,10 +357,10 @@ NO_PROXY=localhost,127.0.0.1,.local,company.internal
 
 ### Optional - Pipeline Configuration
 ```bash
-REPO_NAME=railway_oriented_java     # Repository name
+REPO_NAME=cert-parser     # Repository name
 GIT_REPO=https://github.com/...     # Full git URL
 GIT_BRANCH=main                      # Branch to build
-IMAGE_NAME=railway-oriented-java    # Docker image name
+IMAGE_NAME=cert-parser    # Docker image name
 DEPLOY_WEBHOOK=https://...          # Deployment webhook (optional)
 ```
 
@@ -384,7 +384,7 @@ Your original `main.go` is 100% protected:
 # No changes to these files:
 # ✓ main.go (original)
 # ✓ run.sh (original)
-# ✓ railway-dagger-go binary
+# ✓ cert-parser-dagger-go binary
 ```
 
 ### Switching Between Versions
@@ -420,16 +420,16 @@ dagger_go/
 │   └── [180+ lines - ADDED]
 │
 ├── run.sh (ORIGINAL)
-│   └── Uses `go build -o railway-dagger-go main.go`
+│   └── Uses `go build -o cert-parser-dagger-go main.go`
 │
 ├── run-corporate.sh (NEW)
 │   ├── Temporarily renames main.go
 │   ├── Creates wrapper main() calling corporateMain()
-│   ├── Compiles: `go build -o railway-dagger-go main.go corporate_main.go`
+│   ├── Compiles: `go build -o cert-parser-dagger-go main.go corporate_main.go`
 │   ├── Restores original main.go
 │   └── Runs binary
 │
-└── railway-dagger-go (binary - either version)
+└── cert-parser-dagger-go (binary - either version)
 ```
 
 ---

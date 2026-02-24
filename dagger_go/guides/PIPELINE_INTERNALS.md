@@ -1,372 +1,244 @@
-# Integration Tests Implementation - main.go
+# cert-parser Pipeline Internals — main.go
 
-**Status**: ✅ Complete and Compiled Successfully
+**Status**: ✅ Complete and Production Ready
 
-## What Was Implemented
+## What This Is
 
-The Dagger Go pipeline in `main.go` has been enhanced with full Docker-integrated Testcontainers support following the **SOLUTION 2 + SOLUTION 4** recommended pattern:
+The Dagger Go pipeline in `main.go` runs the full cert-parser CI/CD cycle inside
+a `python:3.14-slim` container, with integration and acceptance tests running on the
+**host machine** via testcontainers (native Docker socket required).
 
 ### Pipeline Flow
 
 ```
 Clone Repository
     ↓
-🔍 Check Docker Availability
+🔍 Discover project name from pyproject.toml
     ↓
-    ├─ Docker Available ──→ Setup Container with Docker Socket Mounting
-    └─ No Docker ─────────→ Setup Container without Docker
+🔍 Check Docker Availability (for testcontainers)
     ↓
-🧪 Run Tests
-    ├─ With Docker ───→ Full Suite (Unit + Integration with Testcontainers)
-    └─ No Docker ─────→ Unit Tests Only (Integration tests skipped)
+🔨 Set up Python build environment in Dagger container
+    ├─ pip install -e ./python_framework   (local railway-rop dependency)
+    └─ pip install -e .[dev,server]
     ↓
-📦 Build JAR (if tests pass)
+🧪 STAGE: Unit Tests (in Dagger container)
+    ├─ pytest -m "not integration and not acceptance"
+    └─ Fast — no Docker needed
     ↓
-🐳 Dockerize
+🧪 STAGE: Integration Tests (on HOST machine)
+    ├─ Docker available → pytest -m integration (testcontainers/PostgreSQL)
+    └─ Docker missing  → SKIPPED with warning
     ↓
-📤 Publish Images
+🧪 STAGE: Acceptance Tests (on HOST machine)
+    ├─ Docker available → pytest -m acceptance (testcontainers/PostgreSQL)
+    └─ Docker missing  → SKIPPED with warning
+    ↓
+🔍 STAGE: Lint — ruff check src/ tests/
+    ↓
+🔍 STAGE: Type Check — mypy src/ --strict
+    ↓
+🐳 STAGE: Build Docker image (from Dockerfile)
+    ↓
+📤 STAGE: Publish to GHCR (versioned + latest tags)
 ```
 
-## Key Components Added
+---
 
-### 1. **Constants for Maintainability**
+## Key Components
+
+### 1. Constants
 
 ```go
 const (
-    baseImage                  = "amazoncorretto:25.0.1"
-    appWorkdir                 = "/app/railway_framework"
-    hostDockerSocketPath       = "/var/run/docker.sock"
-    mavenReleaseVersion        = "25"
-    mavenCompilerPreviewFlag   = "--enable-preview"
-    mavenCompilerRelease       = "-Dmaven.compiler.release="
-    mavenCompilerArgs          = "-Dmaven.compiler.compilerArgs="
-    integrationTestExcludeFlag = "-DexcludedGroups=integration"
+    baseImage                 = "python:3.14-slim"
+    appWorkdir                = "/app"
+    containerDockerSocketPath = "/var/run/docker.sock"
+    dockerUnixPrefix          = "unix://"
+    separatorLine             = "─────────────────..."
 )
 ```
 
-### 2. **Docker Availability Detection**
+### 2. Pipeline Struct
 
 ```go
-func (p *RailwayPipeline) checkDockerAvailability(ctx context.Context, container *dagger.Container) bool
-```
-
-**What it does:**
-- Checks if Docker socket exists at `/var/run/docker.sock`
-- Falls back to checking `/var/run/docker` (alternative location)
-- Returns boolean indicating Docker availability
-
-**Used in:**
-- Determines which test suite to run
-- Logs appropriate messages to console
-- Updates pipeline state
-
-### 3. **Docker Socket Setup Builder**
-
-```go
-func (p *RailwayPipeline) setupBuilder(ctx context.Context, client *dagger.Client, baseImage string, source *dagger.Directory) *dagger.Container
-```
-
-**What it does:**
-- Creates container with Maven and Git tools
-- Mounts Maven cache for faster builds
-- **Mounts Docker socket** from host to container (if available)
-- Sets working directory to `/app/railway_framework`
-
-**Key feature:**
-```go
-if _, err := os.Stat(hostDockerSocketPath); err == nil {
-    builder = builder.WithMountedFile(hostDockerSocketPath, client.Host().File(hostDockerSocketPath))
-}
-```
-This enables testcontainers to access host Docker daemon for launching PostgreSQL and other services.
-
-### 4. **Conditional Test Execution**
-
-```go
-func (p *RailwayPipeline) runTests(ctx context.Context, builder *dagger.Container, hasDocker bool) (*dagger.Container, error)
-```
-
-**Test Strategy:**
-
-#### With Docker Available:
-```go
-testCmd = []string{
-    "mvn", "test",
-    "-Dmaven.compiler.release=25",
-    "-Dmaven.compiler.compilerArgs=--enable-preview",
-    "-q",  // Quiet mode
-}
-```
-Runs **all tests**: unit + integration (with testcontainers)
-
-#### Without Docker:
-```go
-testCmd = []string{
-    "mvn", "test",
-    "-DexcludedGroups=integration",  // ← Key difference
-    "-Dmaven.compiler.release=25",
-    "-Dmaven.compiler.compilerArgs=--enable-preview",
-    "-q",
-}
-```
-Runs **unit tests only**: skips `@Tag("integration")` tests
-
-**Requires in Java Code:**
-```java
-@Tag("integration")  // Maven will skip these if -DexcludedGroups=integration
-class CatalogRepositoryImplIntegrationTest {
-    @Testcontainers
-    static class IntegrationTestConfig {
-        static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(...);
-    }
+type Pipeline struct {
+    RepoName            string
+    ProjectName         string          // auto-discovered from pyproject.toml
+    ImageName           string          // Docker-safe form of ProjectName
+    GitRepo             string
+    GitBranch           string
+    GitUser             string
+    PipCache            *dagger.CacheVolume
+    RunUnitTests        bool            // RUN_UNIT_TESTS (default: true)
+    RunIntegrationTests bool            // RUN_INTEGRATION_TESTS (default: true)
+    RunAcceptanceTests  bool            // RUN_ACCEPTANCE_TESTS (default: true)
+    RunLint             bool            // RUN_LINT (default: true)
+    RunTypeCheck        bool            // RUN_TYPE_CHECK (default: true)
+    HasDocker           bool            // Docker available for testcontainers
 }
 ```
 
-### 5. **RailwayPipeline Updates**
+### 3. Project Name Auto-Discovery
 
-Added new field:
 ```go
-type RailwayPipeline struct {
-    // ... existing fields ...
-    HasDocker bool // Docker availability for testcontainers
+// extractProjectName parses name = "..." from pyproject.toml content.
+func extractProjectName(content string) string {
+    re := regexp.MustCompile(`(?m)^name\s*=\s*"([^"]+)"`)
+    matches := re.FindStringSubmatch(content)
+    ...
+}
+```
+The pipeline reads `pyproject.toml` from the cloned source directly — no hardcoded
+project name anywhere.
+
+### 4. Docker Socket Detection (for testcontainers)
+
+```go
+func getDockerSocketPath() string {
+    // Checks platform-appropriate candidates:
+    //   Linux:  /var/run/docker.sock, /run/docker.sock, $DOCKER_HOST
+    //   macOS:  ~/.docker/run/docker.sock, ~/.colima/docker.sock
+    //   Windows: named pipe paths
+}
+```
+If Docker is unavailable, integration and acceptance tests are **skipped** (not failed).
+
+### 5. Python Build Environment (Dagger container)
+
+```go
+builder := client.Container().
+    From(baseImage).                         // python:3.14-slim
+    WithExec([]string{"apt-get", "update"}).
+    WithExec([]string{"apt-get", "install", "-y",
+        "git", "build-essential", "libpq-dev"}).
+    WithMountedCache("/root/.cache/pip", p.PipCache).
+    WithMountedDirectory(appWorkdir, source).
+    WithWorkdir(appWorkdir).
+    WithExec([]string{"pip", "install", "--upgrade", "pip"}).
+    // Install local framework first (cert-parser depends on railway-rop)
+    WithExec([]string{"pip", "install", "-e", "./python_framework"}).
+    WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
+```
+
+### 6. Unit Tests (in Dagger container)
+
+```go
+testContainer := builder.WithExec([]string{
+    "pytest", "-v", "--tb=short",
+    "-m", "not integration and not acceptance",
+})
+```
+Runs inside the Dagger container — fast, isolated, no Docker socket needed.
+
+### 7. Integration/Acceptance Tests (on HOST)
+
+```go
+func (p *Pipeline) runTestsOnHost(ctx context.Context, marker string) error {
+    // Finds project root (dagger_go/../)
+    // Prefers .venv/bin/pytest, falls back to system pytest
+    // Runs: pytest -v --tb=short -m <marker>
+    // Streams output to stdout in real-time
 }
 ```
 
-## Pipeline Execution Flow
+**Why on host?** Testcontainers needs native Docker socket access. Inside
+Dagger containers, Docker socket path remapping breaks volume mounts.
 
-### Stage 0: Repository Cloning ✅ (existing)
-- Clones from GitHub with authentication
-- Gets commit SHA
-- Sets up base container
+### 8. Host Test Summary Parsing
 
-### Stage 1: Docker Availability Check ✨ (NEW)
+```go
+func displayHostTestSummary(marker, output string, duration time.Duration, testErr error)
 ```
-🔍 Checking Docker availability for testcontainers...
-   test -e /var/run/docker.sock  (checks if exists)
-```
+Parses pytest's summary line (`X passed, Y failed`) and prints structured output.
 
-### Stage 2: Builder Setup ✨ (ENHANCED)
-```
-✅ Docker detected - mounting Docker socket for full test suite
-   🔗 Mounting Docker socket for testcontainers
-
-(or)
-
-⚠️  Docker NOT available - will run unit tests only
-```
-
-### Stage 3: Tests ✨ (ENHANCED)
-```
-🧪 Running tests...
-   📊 Test scope: Unit + Integration (with Docker)
-   [Maven runs all tests including testcontainers]
-
-(or)
-
-🧪 Running tests...
-   📊 Test scope: Unit tests only (Docker unavailable)
-   [Maven skips @Tag("integration") tests]
-```
-
-### Stage 4: Build ✅ (existing, after tests pass)
-```
-📦 Building Maven artifact...
-   mvn package -DskipTests
-```
-
-### Stage 5: Dockerize ✅ (existing)
-```
-🐳 Building Docker image...
-```
-
-### Stage 6: Publish ✅ (existing)
-```
-📤 Publishing to: ghcr.io/user/railway:v1.0.0-abc1234-20251123
-✅ Images published
-```
+---
 
 ## Environment Variables
 
 ### Required
-- `CR_PAT` - GitHub Container Registry Personal Access Token
-- `USERNAME` - GitHub username
+- `CR_PAT` — GitHub Container Registry PAT
+- `USERNAME` — GitHub username
+
+### Pipeline Stage Flags (all default `true`)
+| Variable | Default | Description |
+|---|---|---|
+| `RUN_UNIT_TESTS` | `true` | pytest unit tests in Dagger container |
+| `RUN_INTEGRATION_TESTS` | `true` | pytest integration tests on host |
+| `RUN_ACCEPTANCE_TESTS` | `true` | pytest acceptance tests on host |
+| `RUN_LINT` | `true` | ruff check |
+| `RUN_TYPE_CHECK` | `true` | mypy strict |
 
 ### Optional
-- `REPO_NAME` - Repository name (default: "railway_oriented_java")
-- `GIT_REPO` - Full Git repository URL
-- `GIT_BRANCH` - Branch to clone (default: "main")
-- `IMAGE_NAME` - Docker image name (default: REPO_NAME)
-- `DEPLOY_WEBHOOK` - Deployment webhook URL
+| Variable | Description |
+|---|---|
+| `REPO_NAME` | Repository name (auto-detected from parent dir if unset) |
+| `GIT_BRANCH` | Branch to build (default: `main`) |
+| `IMAGE_NAME` | Docker image name (default: Docker-safe project name) |
 
-## Java Test Setup Required
+---
 
-To fully leverage this implementation, mark integration tests in your Java code:
+## Python Test Setup
 
-```java
-import org.junit.jupiter.api.Tag;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.containers.PostgreSQLContainer;
+Tests use `pytest` markers to control which tests run where:
 
-@Tag("integration")  // ← Critical marker
-@Testcontainers
-class CatalogRepositoryImplIntegrationTest {
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-        DockerImageName.parse("postgres:16-alpine")
-    ).withDatabaseName("railway_test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
-
-    @Test
-    void shouldFindByCategory() {
-        // Integration test with real PostgreSQL via testcontainers
-    }
-}
+```python
+# conftest.py / pyproject.toml
+markers:
+  integration  — requires PostgreSQL via testcontainers
+  acceptance   — full pipeline end-to-end with real fixtures + real DB
 ```
 
-## Testing Scenarios
+Integration and acceptance tests use `testcontainers[postgres]`:
 
-### Scenario 1: Local Development (Docker Desktop Running)
-```bash
-# Docker socket available at /var/run/docker.sock
-cd dagger_go
-export CR_PAT="your-token"
-export USERNAME="your-username"
-go run main.go
-
-Output:
-🔍 Checking Docker availability for testcontainers...
-✅ Docker detected - mounting Docker socket for full test suite
-   🔗 Mounting Docker socket for testcontainers
-🧪 Running tests...
-   📊 Test scope: Unit + Integration (with Docker)
-✅ Tests passed successfully
+```python
+@pytest.mark.integration
+def test_store_and_retrieve(pg_container):
+    # testcontainers spins up a real PostgreSQL on a random port
+    dsn = pg_container.get_connection_url()
+    repo = PsycopgCertificateRepository(dsn=dsn)
+    ...
 ```
 
-### Scenario 2: CI/CD (Docker Available - GitHub Actions)
-```yaml
-jobs:
-  build:
-    runs-on: ubuntu-latest  # Has Docker by default
-    steps:
-      - run: go run main.go
-```
+---
 
-Output: Same as Scenario 1 - full test suite runs
+## Performance Profile
 
-### Scenario 3: Restricted Environment (No Docker)
-```bash
-# Docker socket NOT available
-go run main.go
+| Stage | Location | Duration | Docker |
+|-------|----------|----------|--------|
+| Clone + discover | Dagger | ~10s | No |
+| Python install | Dagger | ~30s first / ~5s cached | No |
+| Unit tests | Dagger | ~15s | No |
+| Integration tests | Host | ~30-60s | Yes |
+| Acceptance tests | Host | ~30-60s | Yes |
+| Lint (ruff) | Dagger | ~3s | No |
+| Type check (mypy) | Dagger | ~10s | No |
+| Docker build | Dagger | ~30s first / ~5s cached | No |
+| Publish to GHCR | Dagger | ~15s | No |
+| **Total** | | **~3-5 min first / ~1-2 min cached** | Optional |
 
-Output:
-🔍 Checking Docker availability for testcontainers...
-⚠️  Docker NOT available - will run unit tests only
-🧪 Running tests...
-   📊 Test scope: Unit tests only (Docker unavailable)
-✅ Tests passed successfully  (unit tests only)
-```
-
-Pipeline continues to build artifact, just without integration testing.
-
-## Performance Impact
-
-| Phase | Impact | Notes |
-|-------|--------|-------|
-| Docker detection | <1s | Minimal check |
-| Docker socket mount | <1s | File I/O operation |
-| Unit tests | No change | Same as before |
-| Integration tests | +30-40s | Container startup time (PostgreSQL) |
-| Build | No change | Same as before |
-| **Total with Docker** | +30-40s | One-time per pipeline run |
-| **Total without Docker** | No change | Unit tests only |
+---
 
 ## Error Handling
 
-The implementation handles:
+| Condition | Behaviour |
+|---|---|
+| Docker unavailable | Integration/acceptance tests skipped with warning |
+| Unit test failure | Pipeline aborts — no lint/build/publish |
+| Lint failure | Pipeline aborts — no build/publish |
+| Type check failure | Pipeline aborts — no build/publish |
+| Build failure | Pipeline aborts — no publish |
+| Publish failure | Error reported, pipeline fails |
 
-✅ Docker socket not available → Graceful degradation (unit tests only)
-✅ Test failures → Pipeline stops, clear error message
-✅ Different Docker socket locations → Checks multiple paths
-✅ Permission issues → Container execution will fail with clear messages
-
-## Troubleshooting
-
-### Issue: "Docker socket not found"
-**Cause:** Docker daemon not running or socket not at standard location
-**Solution:**
-```bash
-# Check Docker is running
-docker ps
-
-# If Docker Desktop, ensure it's started
-# Linux: sudo usermod -aG docker $USER
-```
-
-### Issue: "Tests fail with 'Cannot connect to Docker daemon'"
-**Cause:** Container can't access host Docker socket
-**Solution:**
-```bash
-# Verify socket exists
-ls -la /var/run/docker.sock
-
-# Check permissions
-sudo chmod 666 /var/run/docker.sock  # (if needed)
-
-# Run with explicit socket mount
-export DOCKER_HOST=unix:///var/run/docker.sock
-```
-
-### Issue: "Different tests run depending on environment"
-**Cause:** Integration tests marked without `@Tag("integration")`
-**Solution:** Ensure all testcontainers tests in Java use `@Tag("integration")`
-
-## Next Steps
-
-1. **Mark Integration Tests in Java:**
-   - Add `@Tag("integration")` to all testcontainers tests
-   - Ensure PostgreSQL/testcontainers setup is correct
-
-2. **Test Locally:**
-   ```bash
-   cd dagger_go
-   export CR_PAT="github-token"
-   export USERNAME="github-user"
-   go run main.go
-   ```
-
-3. **Verify Output:**
-   - Confirm Docker detection works
-   - Confirm tests run (unit + integration or unit-only)
-   - Confirm build succeeds after tests pass
-
-4. **Deploy to CI/CD:**
-   - GitHub Actions has Docker by default ✅
-   - Add secrets for CR_PAT and USERNAME
-   - Pipeline will automatically use full test suite
+---
 
 ## Code Statistics
 
-- **Lines Added**: ~120 lines of production code
-- **Functions Added**: 3 new methods
-- **Constants Added**: 8 new constants
-- **Compilation**: ✅ Successful (no errors)
-- **Binary Size**: ~15-20MB (Go compiled binary)
-
-## Related Documentation
-
-- **Quick Start**: `/guides/IMPLEMENTATION_QUICK_START.md`
-- **Full Implementation Guide**: `/guides/TESTCONTAINERS_IMPLEMENTATION_GUIDE.md`
-- **Solutions Analysis**: `/integration-testing/TESTCONTAINERS_PIPELINE_INVESTIGATION.md`
-- **Quick Reference**: `/reference/QUICK_REFERENCE.md`
+- **Lines**: ~570 lines of Go
+- **Stages**: 7 configurable stages
+- **Binary size**: ~20 MB
+- **Compilation**: ✅ Successful — `go build -o cert-parser-dagger-go main.go`
 
 ---
 
 **Status**: ✅ **PRODUCTION READY**
-**Implementation**: SOLUTION 2 + SOLUTION 4 (Docker socket binding + Conditional execution)
-**Tested**: ✅ Compiles successfully
-**Next Action**: Update Java tests with `@Tag("integration")` markers
+**Implementation**: Unit tests in container + Integration/Acceptance on host (testcontainers)

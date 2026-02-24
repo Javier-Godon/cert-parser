@@ -35,7 +35,7 @@
 ## The Pattern (One Function to Rule Them All)
 
 ```go
-func (r *Railway) Test(ctx context.Context) (string, error) {
+func (r *Pipeline) Test(ctx context.Context) (string, error) {
     return dag.Container().
         From("maven:3.9-openjdk-25").
         WithMountedDirectory("/app", r.Source).
@@ -90,12 +90,12 @@ func (r *Railway) Test(ctx context.Context) (string, error) {
 ### Before Dagger
 ```bash
 # Traditional approach
-docker build -t railway-test .
+docker build -t cert-parser-test .
 docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e DOCKER_HOST=unix:///var/run/docker.sock \
   -e TESTCONTAINERS_RYUK_DISABLED=true \
-  railway-test mvn test
+  cert-parser-test mvn test
 ```
 
 ### With Dagger
@@ -125,7 +125,7 @@ dagger call test
 
 ### Phase 2: Integration (1 day)
 - ✅ Add to CI/CD pipeline
-- ✅ Test with actual Railway modules
+- ✅ Test with actual cert-parser modules
 - ✅ Document environment setup
 - ✅ Security review
 
@@ -158,7 +158,7 @@ services:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: railway-test
+  name: cert-parser-test
 ...
 ```
 **Cons**: Overcomplicated, requires cluster, slow startup
@@ -226,7 +226,7 @@ dag.Testcontainers().Setup
 
 ### Implementation Timeline
 - **Week 1**: Proof of concept + documentation
-- **Week 2**: Integration into Railway pipeline
+- **Week 2**: Integration into cert-parser pipeline
 - **Week 3**: CI/CD pipeline updates
 - **Ongoing**: Performance tuning and optimization
 
@@ -247,7 +247,7 @@ dag.Testcontainers().Setup
 3. Run proof of concept locally
 
 ### Short-term (Next Sprint)
-1. Integrate into Railway test pipeline
+1. Integrate into cert-parser pipeline
 2. Update CI/CD configuration
 3. Performance benchmark
 
@@ -278,7 +278,7 @@ dag.Testcontainers().Setup
 
 ## Conclusion
 
-**Dagger provides a production-ready, secure, and elegant solution for running Testcontainers in Docker within CI/CD pipelines. The Railway Framework should adopt this pattern to improve test reliability, maintainability, and performance.**
+**Dagger provides a production-ready, secure, and elegant solution for running Testcontainers in Docker within CI/CD pipelines. The cert-parser should adopt this pattern to improve test reliability, maintainability, and performance.**
 
 **Confidence Level**: 🟢 **HIGH** (95% confidence in successful implementation)
 

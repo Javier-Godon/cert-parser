@@ -267,7 +267,7 @@ A: Acceptable for CI/CD (container gets Docker daemon access). Use caution with 
 - [ ] Copy enhanced code from TESTCONTAINERS_IMPLEMENTATION_GUIDE.md
 - [ ] Update `main.go` with new methods
 - [ ] Update `run.sh` with Docker detection
-- [ ] Build: `go build -o railway-dagger-go main.go`
+- [ ] Build: `go build -o cert-parser-dagger-go main.go`
 - [ ] Test locally: `go run main.go`
 
 ### Validation

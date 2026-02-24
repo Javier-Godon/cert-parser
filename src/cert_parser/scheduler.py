@@ -2,7 +2,7 @@
 Scheduler — periodic execution of the certificate parsing pipeline.
 
 Infrastructure layer — uses APScheduler (3.x) for lightweight in-process
-scheduling with configurable interval.
+scheduling driven by a standard 5-field cron expression.
 
 The scheduler wraps pipeline execution within a LoggingExecutionContext
 for structured observability (timing, success/failure logging).
@@ -18,7 +18,7 @@ from collections.abc import Callable
 
 import structlog
 from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from railway import LoggingExecutionContext
 from railway.result import Result
 
@@ -27,22 +27,22 @@ log = structlog.get_logger()
 
 def create_scheduler(
     pipeline_fn: Callable[[], Result[int]],
-    interval_hours: int = 6,
+    cron: str = "0 */6 * * *",
     run_on_startup: bool = True,
 ) -> BlockingScheduler:
     """
-    Create a configured APScheduler that runs the pipeline periodically.
+    Create a configured APScheduler that runs the pipeline on a cron schedule.
 
     Args:
         pipeline_fn: Zero-argument callable returning Result[int] (the wired pipeline).
-        interval_hours: Hours between scheduled executions.
-        run_on_startup: If True, execute once immediately before entering the schedule loop.
+        cron: Standard 5-field cron expression (minute hour dom month dow).
+              Default "0 */6 * * *" runs every 6 hours.
+        run_on_startup: If True, execute once immediately before entering the loop.
 
     Returns:
         A configured BlockingScheduler (call .start() to begin).
     """
     scheduler = BlockingScheduler()
-
     ctx = LoggingExecutionContext(operation="MasterListSync")
 
     def _job() -> None:
@@ -53,9 +53,16 @@ def create_scheduler(
         else:
             log.error("scheduler.job_failed", failure=str(result.error()))
 
+    minute, hour, dom, month, dow = cron.split()
     scheduler.add_job(
         _job,
-        trigger=IntervalTrigger(hours=interval_hours),
+        trigger=CronTrigger(
+            minute=minute,
+            hour=hour,
+            day=dom,
+            month=month,
+            day_of_week=dow,
+        ),
         id="cert_parser_sync",
         name="ICAO Master List sync",
         replace_existing=True,

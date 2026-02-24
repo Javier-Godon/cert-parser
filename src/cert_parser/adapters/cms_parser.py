@@ -20,8 +20,22 @@ cryptography handles X.509 metadata extraction (best-in-class typed API).
 from __future__ import annotations
 
 import uuid
+import warnings
 
 import structlog
+
+# Silence the CryptographyDeprecationWarning at the stdlib level so it never
+# reaches stderr.  We re-emit it as a structured log event inside
+# _der_to_certificate_record() with full certificate context (issuer, serial),
+# giving us an actionable audit trail of every affected ICAO certificate.
+# When cryptography eventually starts *rejecting* these certs (not just warning),
+# the log will tell us exactly which countries/issuers are impacted.
+warnings.filterwarnings(
+    "ignore",
+    message=".*NULL parameter value.*signature algorithm.*",
+    category=DeprecationWarning,
+)
+
 from asn1crypto import cms, core
 from asn1crypto import x509 as asn1_x509
 from cryptography import x509
@@ -85,22 +99,83 @@ def _extract_aki(cert: x509.Certificate) -> str | None:
         return None
 
 
+def _extract_master_list_issuer(signed_data: cms.SignedData) -> str | None:
+    """Extract the Master List issuer from the CMS SignerInfo.
+
+    The signer's issuer name identifies which country/entity issued
+    this Master List. Tries two strategies:
+      1. SignerInfo issuerAndSerialNumber → signer's issuer name
+      2. First outer certificate's subject → signing certificate identity
+
+    Returns None only if neither source is available.
+    """
+    ml_issuer = _issuer_from_signer_info(signed_data)
+    if ml_issuer is not None:
+        return ml_issuer
+    return _issuer_from_outer_certificate(signed_data)
+
+
+def _issuer_from_signer_info(signed_data: cms.SignedData) -> str | None:
+    """Extract issuer from the first SignerInfo's issuerAndSerialNumber."""
+    signer_infos = signed_data["signer_infos"]
+    if signer_infos is None or len(signer_infos) == 0:
+        return None
+
+    sid = signer_infos[0]["sid"]
+    if sid.name == "issuer_and_serial_number":
+        return sid.chosen["issuer"].human_friendly  # type: ignore[no-any-return]
+    return None
+
+
+def _issuer_from_outer_certificate(signed_data: cms.SignedData) -> str | None:
+    """Fallback: extract subject from the first outer signing certificate."""
+    certs_set = signed_data["certificates"]
+    if certs_set is None or len(certs_set) == 0:
+        return None
+
+    der_bytes = certs_set[0].chosen.dump()
+    cert = x509.load_der_x509_certificate(der_bytes)
+    return cert.subject.rfc4514_string()
+
+
 def _der_to_certificate_record(
     der_bytes: bytes,
     source: str,
+    master_list_issuer: str | None = None,
 ) -> CertificateRecord:
     """
     Convert DER-encoded X.509 bytes into a CertificateRecord.
 
     Uses cryptography for metadata extraction. Missing extensions
     (SKI, AKI) result in None fields — they do NOT cause failures.
+
+    Certificates with a NULL parameter in their RSA signature algorithm
+    (a legacy Java PKI encoding used by many ICAO member states) are
+    accepted today but will be rejected by a future cryptography release.
+    We catch the deprecation warning and re-emit it as a structured log
+    event with issuer + serial context, creating an audit trail of every
+    affected certificate. When the breaking change arrives, that log tells
+    us exactly which countries/issuers need special handling.
     """
-    cert = x509.load_der_x509_certificate(der_bytes)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        cert = x509.load_der_x509_certificate(der_bytes)
+
     issuer_str = cert.issuer.rfc4514_string()
     x500_issuer_bytes = cert.issuer.public_bytes()
     serial_hex = hex(cert.serial_number)
     ski = _extract_ski(cert)
     aki = _extract_aki(cert)
+
+    if caught:
+        log.warning(
+            "certificate.null_signature_algorithm_parameter",
+            issuer=issuer_str,
+            serial=serial_hex,
+            master_list_issuer=master_list_issuer,
+            detail="Legacy Java PKI encoding — will be rejected by a future "
+                   "cryptography release. Track this issuer.",
+        )
 
     if ski is None:
         log.warning("certificate.missing_ski", issuer=issuer_str, serial=serial_hex)
@@ -110,6 +185,7 @@ def _der_to_certificate_record(
         subject_key_identifier=ski,
         authority_key_identifier=aki,
         issuer=issuer_str,
+        master_list_issuer=master_list_issuer,
         x_500_issuer=x500_issuer_bytes,
         source=source,
         isn=serial_hex,
@@ -122,6 +198,7 @@ def _der_to_certificate_record(
 def _extract_outer_certificates(
     signed_data: cms.SignedData,
     source: str,
+    master_list_issuer: str | None = None,
 ) -> list[CertificateRecord]:
     """Extract certificates from SignedData.certificates (outer CMS envelope signers)."""
     certs_set = signed_data["certificates"]
@@ -131,13 +208,17 @@ def _extract_outer_certificates(
     records: list[CertificateRecord] = []
     for cert_choice in certs_set:
         der_bytes = cert_choice.chosen.dump()
-        records.append(_der_to_certificate_record(der_bytes, source=source))
+        records.append(
+            _der_to_certificate_record(der_bytes, source=source,
+                                       master_list_issuer=master_list_issuer)
+        )
     return records
 
 
 def _extract_inner_certificates(
     signed_data: cms.SignedData,
     source: str,
+    master_list_issuer: str | None = None,
 ) -> list[CertificateRecord]:
     """
     Extract certificates from the CscaMasterList inside the CMS eContent.
@@ -159,7 +240,10 @@ def _extract_inner_certificates(
     records: list[CertificateRecord] = []
     for asn1_cert in cert_list:
         der_bytes = asn1_cert.dump()
-        records.append(_der_to_certificate_record(der_bytes, source=source))
+        records.append(
+            _der_to_certificate_record(der_bytes, source=source,
+                                       master_list_issuer=master_list_issuer)
+        )
     return records
 
 
@@ -284,11 +368,18 @@ class CmsMasterListParser:
         content_info = cms.ContentInfo.load(raw_bin)
         signed_data = content_info["content"]
 
+        # Step 1b: Extract Master List issuer from CMS signer
+        ml_issuer = _extract_master_list_issuer(signed_data)
+
         # Step 2: Extract outer certificates (CMS envelope signers)
-        outer_certs = _extract_outer_certificates(signed_data, source=source)
+        outer_certs = _extract_outer_certificates(
+            signed_data, source=source, master_list_issuer=ml_issuer,
+        )
 
         # Step 3: Extract inner certificates (Master List payload)
-        inner_certs = _extract_inner_certificates(signed_data, source=source)
+        inner_certs = _extract_inner_certificates(
+            signed_data, source=source, master_list_issuer=ml_issuer,
+        )
 
         # Step 4: Extract CRLs
         crl_records, revoked_records = _extract_crls(signed_data, source=source)

@@ -728,7 +728,7 @@ We use `revoked_cert.revocation_date_utc` (timezone-aware) instead. The
 
 | Check | Status | Command |
 |-------|:------:|---------|
-| Tests | ✅ 117 passed | `pytest -v --tb=short` |
+| Tests | ✅ 111 passed | `pytest -v --tb=short` (unit only) |
 | Type Safety | ✅ 0 errors | `mypy src/ --strict` |
 | Linting | ✅ 0 errors | `ruff check src/ tests/ scripts/` |
 | Coverage | ✅ 91% | `pytest --cov=cert_parser` |
@@ -879,9 +879,36 @@ Both `run.sh` and `test.sh` follow these conventions:
 4. **Fail-fast**: Both use `set -e` — any command failure aborts the script immediately.
 5. **Go prerequisite check**: `test.sh` verifies Go is installed before proceeding.
 
+### 11.17 REST Trigger Endpoint & db_migrations
+
+**POST /trigger**: The ASGI app exposes a `POST /trigger` endpoint for manual pipeline
+execution via tools like Postman. It runs the full pipeline (auth → download → parse → store)
+and returns JSON with `rows_stored` on success or error details on failure. Uses
+`asyncio.to_thread` to avoid blocking the ASGI event loop.
+
+**db_migrations/**: Contains reference-only SQL files documenting the expected PostgreSQL
+schema. These are NOT auto-applied migrations. The `db_migrations/README.md` explains
+this clearly. Any schema changes must be reflected in both the SQL files and the
+repository's INSERT statements.
+
+### 11.18 master_list_issuer — CMS Signer Tracking
+
+The `root_ca` table has a `master_list_issuer` column (not present in `dsc`) that
+tracks which entity signed the CMS Master List envelope. This is extracted via:
+1. SignerInfo `issuerAndSerialNumber` → signer's issuer name (preferred)
+2. First outer certificate's subject → fallback when SID type is `subjectKeyIdentifier`
+
+Some ICAO Master Lists use `issuerAndSerialNumber` (e.g., Seychelles) while others
+use `subjectKeyIdentifier` (e.g., France). The composite fixture has no signer infos
+and falls back to outer certificate subject. The repository uses separate INSERT
+statements for `root_ca` (10 columns including `master_list_issuer`) and `dsc` (9 columns).
+
 ---
 
 ## 12. Database Schema Reference
+
+> **Note**: The SQL files in `db_migrations/` are reference-only documentation.
+> They are NOT applied automatically. See `db_migrations/README.md` for details.
 
 ```sql
 -- Root CA certificates (CSCA)
@@ -891,13 +918,14 @@ CREATE TABLE root_ca (
     subject_key_identifier    TEXT,
     authority_key_identifier  TEXT,
     issuer                    TEXT,
+    master_list_issuer        TEXT,
     x_500_issuer              BYTEA,
     source                    TEXT,
     isn                       TEXT,
     updated_at                TIMESTAMP WITHOUT TIME ZONE
 );
 
--- Document Signer Certificates (DSC) — same schema as root_ca
+-- Document Signer Certificates (DSC) — NOT same schema as root_ca (no master_list_issuer)
 CREATE TABLE dsc (
     id                        UUID PRIMARY KEY,
     certificate               BYTEA NOT NULL,

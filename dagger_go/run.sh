@@ -38,12 +38,12 @@ echo "   Branch: ${GIT_BRANCH:-main}"
 echo ""
 
 # Check if binary exists, build if not
-if [ ! -f ./railway-dagger-go ]; then
+if [ ! -f ./cert-parser-dagger-go ]; then
     echo "📦 Building pipeline binary..."
     go mod download dagger.io/dagger
     go mod tidy
-    go build -o railway-dagger-go main.go
+    go build -o cert-parser-dagger-go main.go
 fi
 
 # Run the pipeline binary
-./railway-dagger-go
+./cert-parser-dagger-go

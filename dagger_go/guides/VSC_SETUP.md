@@ -23,8 +23,8 @@ This guide explains how to configure **Visual Studio Code (VSC)** to develop and
 ### Step 1: Open Workspace (30 seconds)
 
 ```bash
-cd /home/javier/javier/workspaces/public_github/railway_oriented_java
-code .vscode/railway.code-workspace
+cd /home/javier/javier/workspaces/public_github/cert-parser
+code .vscode/cert-parser.code-workspace
 ```
 
 VSC opens with all projects organized.
@@ -153,11 +153,11 @@ go install github.com/go-delve/delve/cmd/dlv@latest
 
 ### ✅ Recommended: Use VSC Workspace File
 
-The workspace file is already created at `.vscode/railway.code-workspace`:
+The workspace file is already created at `.vscode/cert-parser.code-workspace`:
 
 ```bash
 # From project root
-code .vscode/railway.code-workspace
+code .vscode/cert-parser.code-workspace
 ```
 
 **This opens:**
@@ -282,7 +282,7 @@ The `.vscode/tasks.json` is already configured to load credentials from `credent
     {
       "label": "Build Railway Image",
       "type": "shell",
-      "command": "cd ${workspaceFolder}/dagger_go && go build -o railway-dagger-go main.go",
+      "command": "cd ${workspaceFolder}/dagger_go && go build -o cert-parser-dagger-go main.go",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -493,14 +493,14 @@ export USERNAME="your-github-username"
 ### Explorer View
 
 ```
-railway_oriented_java (Workspace)
+cert-parser (Workspace)
 ├── dagger_go/
 │   ├── main.go
 │   ├── main_test.go
 │   ├── go.mod
 │   ├── test.sh
 │   └── run.sh
-├── railway_framework/
+├── python_framework/
 │   ├── pom.xml
 │   └── src/
 ├── .vscode/
@@ -823,7 +823,7 @@ bash setup-vsc.sh
 
 ```bash
 # From project root
-code .vscode/railway.code-workspace
+code .vscode/cert-parser.code-workspace
 ```
 
 #### Step 2: Run Test Task
@@ -843,7 +843,7 @@ Ctrl+Shift+P → Tasks: Run Task → Test Dagger Go
 Ctrl+Shift+P → Tasks: Run Task → Build Railway Image
 ```
 
-- Compiles Go code to `railway-dagger-go` executable
+- Compiles Go code to `cert-parser-dagger-go` executable
 - Ready for deployment
 
 #### Step 4: Run Full Pipeline
@@ -895,10 +895,10 @@ Expected output:
 #### Step 3: Build Binary
 
 ```bash
-go build -o railway-dagger-go main.go
+go build -o cert-parser-dagger-go main.go
 ```
 
-Binary created: `railway-dagger-go` (15MB)
+Binary created: `cert-parser-dagger-go` (15MB)
 
 #### Step 4: Run Pipeline
 
@@ -943,7 +943,7 @@ Credentials loaded automatically for debug sessions.
 | **.vscode/tasks.json** | VSC build/run tasks | ✅ |
 | **.vscode/launch.json** | VSC debug configurations | ✅ |
 | **.vscode/settings.json** | VSC editor settings | ✅ |
-| **.vscode/railway.code-workspace** | Multi-folder workspace | ✅ |
+| **.vscode/cert-parser.code-workspace** | Multi-folder workspace | ✅ |
 | **credentials/.env** | GitHub credentials | ✅ (your file) |
 
 All configuration files are in place. Ready to use!
@@ -955,8 +955,8 @@ All configuration files are in place. Ready to use!
 After successful build:
 
 ```
-railway-dagger-go          # Compiled binary (15MB)
-railway-dagger-go.md5      # Checksum file
+cert-parser-dagger-go          # Compiled binary (15MB)
+cert-parser-dagger-go.md5      # Checksum file
 coverage.out               # Test coverage data
 ```
 
@@ -1032,20 +1032,20 @@ PASS
 
 ```bash
 # Executed command:
-cd ${workspaceFolder}/dagger_go && go build -o railway-dagger-go main.go
+cd ${workspaceFolder}/dagger_go && go build -o cert-parser-dagger-go main.go
 ```
 
 **Actions:**
 1. Compiles Go source code to executable
-2. Creates `railway-dagger-go` binary (15MB)
+2. Creates `cert-parser-dagger-go` binary (15MB)
 3. Single-file deployment ready
 
 **Expected duration:** 5-10 seconds
 
 **Success indicator:**
 ```
-$ ls -lh railway-dagger-go
--rwxr-xr-x  railway-dagger-go (15M)
+$ ls -lh cert-parser-dagger-go
+-rwxr-xr-x  cert-parser-dagger-go (15M)
 ```
 
 ### Task: Run Dagger Pipeline
@@ -1073,7 +1073,7 @@ cd ${workspaceFolder}/dagger_go && ./run.sh
 **Success indicator:**
 ```
 ✅ Pipeline completed successfully
-Image pushed to ghcr.io/username/railway_framework:abc1234def
+Image pushed to ghcr.io/username/python_framework:abc1234def
 ```
 
 ---
@@ -1099,10 +1099,10 @@ F5 → Debug Dagger Go
 Ctrl+Shift+P → Tasks: Run Task → Build Railway Image
 
 # 2. Verify binary created
-ls -lh railway-dagger-go
+ls -lh cert-parser-dagger-go
 
 # 3. Deploy to server
-scp railway-dagger-go user@server:/opt/railway/
+scp cert-parser-dagger-go user@server:/opt/cert-parser/
 ```
 
 ### Workflow 3: Full CI/CD Pipeline
@@ -1266,7 +1266,7 @@ Before running pipelines, verify:
 
 **Next Steps:**
 
-1. Open workspace: `code .vscode/railway.code-workspace`
+1. Open workspace: `code .vscode/cert-parser.code-workspace`
 2. Run test task: `Ctrl+Shift+P → Tasks: Run Task → Test Dagger Go`
 3. Build binary: `Ctrl+Shift+P → Tasks: Run Task → Build Railway Image`
 4. Run pipeline: `Ctrl+Shift+P → Tasks: Run Task → Run Dagger Pipeline`

@@ -1,4 +1,4 @@
-module railway-dagger-go
+module cert-parser-dagger-go
 
 go 1.24.0
 

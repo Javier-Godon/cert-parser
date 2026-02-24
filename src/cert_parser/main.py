@@ -98,7 +98,7 @@ def _create_adapters(settings: AppSettings) -> _Adapters:
     )
     parser = CmsMasterListParser()
     repository = PsycopgCertificateRepository(
-        dsn=settings.database.dsn.get_secret_value(),
+        dsn=settings.database.get_dsn(),
     )
     return access_token_provider, sfc_token_provider, downloader, parser, repository
 
@@ -118,7 +118,7 @@ def main() -> None:
         "app.starting",
         version="0.1.0",
         log_level=settings.log_level,
-        interval_hours=settings.scheduler.interval_hours,
+        cron=settings.scheduler.cron,
         run_on_startup=settings.run_on_startup,
     )
 
@@ -137,16 +137,19 @@ def main() -> None:
 
     scheduler = create_scheduler(
         pipeline_fn=pipeline_fn,
-        interval_hours=settings.scheduler.interval_hours,
+        cron=settings.scheduler.cron,
         run_on_startup=settings.run_on_startup,
     )
 
-    log.info("app.scheduler_starting", interval_hours=settings.scheduler.interval_hours)
+    log.info("app.scheduler_starting", cron=settings.scheduler.cron)
 
     try:
         scheduler.start()
-    except KeyboardInterrupt, SystemExit:
+    except KeyboardInterrupt:
         log.info("app.shutdown", reason="signal received")
+    except SystemExit:
+        log.info("app.shutdown", reason="signal received")
+        raise
     except Exception as e:
         log.error("app.fatal_error", error=str(e))
         sys.exit(1)

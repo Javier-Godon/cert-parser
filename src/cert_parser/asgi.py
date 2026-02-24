@@ -17,13 +17,14 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from railway.result import Result
 
 from cert_parser.config import AppSettings
 from cert_parser.main import _create_adapters, configure_structlog
@@ -37,6 +38,7 @@ _scheduler_thread: threading.Thread | None = None
 _scheduler_started = False
 _scheduler_ready = False  # True after first successful run
 _error_message: str | None = None
+_pipeline_fn: Callable[[], Result[int]] | None = None
 log = structlog.get_logger()
 
 
@@ -85,6 +87,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             parser=parser,
             repository=repository,
         )
+
+        global _pipeline_fn
+        _pipeline_fn = pipeline_fn
 
         scheduler = create_scheduler(
             pipeline_fn=pipeline_fn,
@@ -231,6 +236,58 @@ async def info() -> dict[str, Any]:
         "scheduler_ready": _scheduler_ready,
         "has_error": _error_message is not None,
     }
+
+
+@app.post("/trigger")
+async def trigger() -> JSONResponse:
+    """
+    Manually trigger the certificate parsing pipeline.
+
+    Intended for testing and debugging — allows triggering the full
+    pipeline run from tools like Postman without waiting for the scheduler.
+
+    Runs the pipeline synchronously in a background thread to avoid
+    blocking the ASGI event loop.
+
+    Returns 200 with rows_stored on success.
+    Returns 500 with error details on pipeline failure.
+    Returns 503 if the pipeline is not initialized yet.
+    """
+    if _pipeline_fn is None:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "reason": "Pipeline not initialized"},
+        )
+
+    log.info("trigger.manual_start", source="REST")
+
+    try:
+        result = await asyncio.to_thread(_pipeline_fn)
+    except Exception as e:
+        log.error("trigger.exception", error=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "error": str(e)},
+        )
+
+    if result.is_success():
+        rows = result.value()
+        log.info("trigger.completed", rows_stored=rows)
+        return JSONResponse(
+            status_code=200,
+            content={"status": "success", "rows_stored": rows},
+        )
+
+    failure = result.error()
+    log.error("trigger.pipeline_failed", failure=str(failure))
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "failed",
+            "error_code": str(failure.code),
+            "message": failure.message,
+        },
+    )
 
 
 if __name__ == "__main__":

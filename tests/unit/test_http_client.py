@@ -40,9 +40,9 @@ CLIENT_ID = "test-client"
 CLIENT_SECRET = "test-secret"
 USERNAME = "test-user"
 PASSWORD = "test-password"
-BORDER_POST_ID = 42
-BOX_ID = 7
-PASSENGER_CONTROL_TYPE = 1
+BORDER_POST_ID = "BOR/42/A"
+BOX_ID = "XX/99/X"
+PASSENGER_CONTROL_TYPE = "PCT/1"
 
 
 @pytest.fixture()

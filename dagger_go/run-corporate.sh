@@ -15,6 +15,14 @@ PROJECT_NAME=$(basename "$(cd .. && pwd)")
 echo -e "${BLUE}🏢 ${PROJECT_NAME} — Corporate CI/CD Pipeline Runner${NC}"
 echo ""
 
+# Auto-discover REPO_NAME from parent directory name if not already set
+if [ -z "$REPO_NAME" ]; then
+    REPO_NAME=$(basename "$(cd .. && pwd)")
+    export REPO_NAME
+fi
+echo "   Repository: ${REPO_NAME}"
+echo ""
+
 # Verify credentials
 if [ ! -f "credentials/.env" ]; then
     echo -e "${YELLOW}⚠️  credentials/.env not found${NC}"
@@ -62,7 +70,7 @@ echo ""
 echo -e "${BLUE}Compiling corporate pipeline...${NC}"
 
 # Build with corporate build tag
-if go build -tags corporate -o railway-corporate-dagger-go corporate_main.go 2>&1; then
+if go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go 2>&1; then
     echo -e "${GREEN}✓ Build successful${NC}"
 else
     echo -e "${YELLOW}❌ Build failed${NC}"
@@ -80,8 +88,7 @@ if [ "$DEBUG_CERTS" = "true" ]; then
     echo ""
 fi
 
-# Execute the binary
-./railway-corporate-dagger-go
+./cert-parser-corporate-dagger-go
 
 echo ""
 echo -e "${GREEN}✅ Pipeline completed${NC}"

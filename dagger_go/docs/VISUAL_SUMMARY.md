@@ -1,7 +1,7 @@
 # 🏁 Investigation Summary - Visual Overview
 
 ## The Question
-> Can Dagger run Docker-integrated Testcontainers for the Railway Framework's CI/CD pipeline?
+> Can Dagger run Docker-integrated Testcontainers for the cert-parser's CI/CD pipeline?
 
 ## The Answer
 ```
@@ -55,7 +55,7 @@ dag.Testcontainers().Setup
 ## How It Works (Visual)
 
 ```
-Railway Framework
+cert-parser
 │
 ├─ Dagger Pipeline (Go)
 │  │
@@ -174,7 +174,7 @@ Week 1: Proof of Concept
 
 Week 2: Integration
 ├─ 🔧 Add to main.go
-├─ 🧪 Test with Railway
+├─ 🧪 Test with cert-parser
 ├─ 📝 Document setup
 └─ ✅ Team review
 
@@ -252,7 +252,7 @@ Overall Risk: 🟢 ACCEPTABLE for CI/CD
 
 ## Decision Matrix
 
-**Should Railway Framework use Dagger + Testcontainers?**
+**Should cert-parser use Dagger + Testcontainers?**
 
 ```
 Question                          Answer  Confidence

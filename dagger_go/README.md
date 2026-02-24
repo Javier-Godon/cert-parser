@@ -188,7 +188,7 @@ dagger_go/
 │
 ├── run.sh                             ← Execute pipeline
 ├── test.sh                            ← Test runner
-├── railway-dagger-go                  ← Compiled binary
+├── cert-parser-dagger-go              ← Compiled binary
 │
 ├── guides/
 │   ├── BUILD_AND_RUN.md              ← ⭐ START HERE for practical instructions

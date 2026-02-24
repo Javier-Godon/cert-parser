@@ -19,6 +19,7 @@ CREATE TABLE root_ca (
     subject_key_identifier    TEXT,
     authority_key_identifier  TEXT,
     issuer                    TEXT,
+    master_list_issuer        TEXT,
     x_500_issuer              BYTEA,
     source                    TEXT,
     isn                       TEXT,

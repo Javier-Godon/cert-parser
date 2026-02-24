@@ -107,9 +107,9 @@ class HttpSfcTokenProvider:
     def __init__(
         self,
         login_url: str,
-        border_post_id: int,
-        box_id: int,
-        passenger_control_type: int,
+        border_post_id: str,
+        box_id: str,
+        passenger_control_type: str,
         timeout: int = 60,
     ) -> None:
         self._login_url = login_url

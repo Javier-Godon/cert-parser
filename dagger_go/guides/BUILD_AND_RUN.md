@@ -1,6 +1,6 @@
 # Dagger Go Build & Run Guide
 
-Complete guide to building and running the Railway-Oriented Java Dagger Go CI/CD pipeline.
+Complete guide to building and running the cert-parser Python Dagger Go CI/CD pipeline.
 
 ## ⚡ Quick Reference
 
@@ -12,8 +12,8 @@ Complete guide to building and running the Railway-Oriented Java Dagger Go CI/CD
 | **Integration only** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=false ./run.sh` | 30-45s |
 | **Default (smart)** | `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./run.sh` | 40-60s |
 | **Test code** | `cd dagger_go && set -a && source ../credentials/.env && set +a && go test -v` | 30-60s |
-| **Build binary** | `cd dagger_go && go build -o railway-dagger-go main.go` | 5-10s |
-| **Build corporate** | `cd dagger_go && go build -o railway-corporate-dagger-go corporate_main.go` | 5-10s |
+| **Build binary** | `cd dagger_go && go build -o cert-parser-dagger-go main.go` | 5-10s |
+| **Build corporate** | `cd dagger_go && go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go` | 5-10s |
 | **Debug** | VSC F5 → Debug Dagger Go | Live |
 
 **Key Points**:
@@ -69,7 +69,7 @@ go: downloading dagger.io/dagger v0.19.7
 --- PASS: TestProjectRootDiscovery (1.234s)
 --- PASS: TestEnvironmentVariables (0.567s)
 PASS
-ok      railway/dagger    2.345s
+ok      cert-parser-dagger-go    2.345s
 ```
 
 **Duration**: 30-60 seconds (first time), 5-10 seconds (cached)
@@ -90,20 +90,20 @@ ok      railway/dagger    2.345s
 ```bash
 cd dagger_go
 go mod download dagger.io/dagger && go mod tidy
-go build -o railway-dagger-go main.go
+go build -o cert-parser-dagger-go main.go
 ```
 
 **What happens:**
 1. Downloads Dagger Go SDK and all dependencies
 2. Compiles Go code to standalone executable
-3. Creates 20MB binary: `railway-dagger-go`
+3. Creates ~20MB binary: `cert-parser-dagger-go`
 
 **Success output:**
 ```
-$ ls -lh railway-dagger-go
--rwxrwxr-x 20M railway-dagger-go
-$ file railway-dagger-go
-railway-dagger-go: ELF 64-bit LSB executable, x86-64
+$ ls -lh cert-parser-dagger-go
+-rwxrwxr-x 20M cert-parser-dagger-go
+$ file cert-parser-dagger-go
+cert-parser-dagger-go: ELF 64-bit LSB executable, x86-64
 ```
 
 **Duration**: 5-10 seconds
@@ -112,7 +112,7 @@ railway-dagger-go: ELF 64-bit LSB executable, x86-64
 - ✅ Pure Go compilation (no dependencies needed after download)
 - ❌ Does NOT require Docker
 - Binary ready for server deployment
-- Run with credentials: `set -a && source ../credentials/.env && set +a && ./railway-dagger-go`
+- Run with credentials: `set -a && source ../credentials/.env && set +a && ./cert-parser-dagger-go`
 
 ---
 
@@ -215,23 +215,30 @@ set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && ./ru
 **What happens:**
 1. Loads credentials from credentials/.env
 2. Connects to Dagger Engine (via Docker)
-3. Builds Maven project (`mvn clean package`)
-4. Creates Docker image
-5. Tags with git commit SHA
-6. Pushes to GitHub Container Registry
+3. Installs Python deps (`pip install -e ./python_framework && pip install -e .[dev,server]`)
+4. Runs unit tests (`pytest -m "not integration and not acceptance"`, in container)
+5. Runs integration/acceptance tests on HOST (testcontainers/PostgreSQL)
+6. Lints with `ruff check src/ tests/`
+7. Type-checks with `mypy src/ --strict`
+8. Creates Docker image
+9. Tags with git commit SHA
+10. Pushes to GitHub Container Registry
 
 **Success output:**
 ```
-🚀 Starting Railway Dagger Go CI/CD Pipeline...
-📦 Building Maven project...
-  [INFO] BUILD SUCCESS
+🚀 Starting cert-parser Python CI/CD Pipeline (Go SDK v0.19.7)...
+🔍 Discovering project name from pyproject.toml...
+   Project name: cert-parser
+🧪 Running unit tests...
+   ✅ 111 passed in 14s
+🔍 Running lint (ruff)...
+   ✅ No issues found
+🔍 Running type check (mypy)...
+   ✅ No issues found in 13 source files
 🐳 Building Docker image...
-  Step 1/15 : FROM amazoncorretto:25.0.1-al2
-  ...
 📤 Pushing to GHCR...
-  Digest: sha256:abc123def456...
 ✅ Pipeline completed successfully!
-Image: ghcr.io/username/railway_framework:abc1234def
+Image: ghcr.io/username/cert-parser:v0.1.0-abc1234-20260224-1030
 ```
 
 **Duration**:
@@ -252,8 +259,8 @@ Image: ghcr.io/username/railway_framework:abc1234def
 **Command:**
 
 ```bash
-cd dagger_go
-set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME DEBUG_CERTS && ./run-corporate.sh
+set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME DEBUG_CERTS && ./run-corporate.shcd dagger_go
+
 ```
 
 **What's Different:**
@@ -305,8 +312,8 @@ set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME DEBUG_C
    📜 Unique certificates collected: 2
 ─────────────────────────────────────────────────────────────────────────────────
 
-🚀 Starting Railway Dagger Go CI/CD Pipeline...
-📦 Building Maven project...
+🚀 Starting cert-parser Python CI/CD Pipeline...
+🧪 Running unit tests...
 ✅ Pipeline completed successfully!
 ```
 
@@ -339,7 +346,7 @@ set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME DEBUG_C
 
 ### Setup
 
-1. Open workspace: `code .vscode/railway.code-workspace`
+1. Open workspace: `code .`
 2. Open `dagger_go/main.go`
 3. Click gutter (left margin) next to line number to set breakpoint
 4. Red circle ⭕ appears
@@ -367,32 +374,30 @@ Press `F5` and select "Debug Dagger Go"
 ## File Structure
 
 ```
-railway_oriented_java/
+cert-parser/
 ├── credentials/
 │   └── .env                    # CR_PAT, USERNAME (your secrets)
 │
 ├── dagger_go/                  # ← You work here
-│   ├── main.go                 # Pipeline code (230+ lines)
+│   ├── main.go                 # Pipeline code (570+ lines)
 │   ├── main_test.go            # Unit tests
 │   ├── go.mod                  # Go module definition
 │   ├── go.sum                  # Dependency checksums
 │   ├── test.sh                 # Test runner
 │   ├── run.sh                  # Pipeline executor
-│   ├── railway-dagger-go       # Binary (after `go build`)
+│   ├── cert-parser-dagger-go   # Binary (after `go build`)
 │   └── BUILD_AND_RUN.md        # This file
 │
-├── .vscode/
-│   ├── tasks.json              # VSC tasks (for reference)
-│   ├── launch.json             # Debug config
-│   ├── settings.json           # Editor settings
-│   └── railway.code-workspace  # Multi-folder workspace
+├── src/cert_parser/            # Python application (hexagonal architecture)
+│   ├── domain/                 # Pure domain layer
+│   ├── adapters/               # HTTP, CMS parser, PostgreSQL
+│   ├── pipeline.py             # Orchestration (flat_map chains)
+│   └── config.py               # pydantic-settings
 │
-├── railway_framework/          # Main Java application
-│   ├── pom.xml
-│   └── src/
-│
-└── deployment/                 # Kubernetes configs
-    └── k8s/
+├── python_framework/           # Local railway-rop package (installed first)
+├── tests/                      # pytest unit/integration/acceptance
+├── pyproject.toml
+└── Dockerfile
 ```
 
 ---
@@ -512,7 +517,7 @@ go mod download dagger.io/dagger
 go mod tidy
 
 # Step 3: Try building again
-go build -o railway-dagger-go main.go
+go build -o cert-parser-dagger-go main.go
 ```
 
 **Expected output:**
@@ -549,7 +554,7 @@ After these commands complete, `go.sum` will be updated and the build will succe
 
 ### Faster Development
 
-1. **Build once** - `go build -o railway-dagger-go main.go`
+1. **Build once** - `go build -o cert-parser-dagger-go main.go`
 2. **Deploy binary** - Run binary on servers
 3. **Debug locally** - F5 for breakpoints
 
@@ -559,7 +564,7 @@ After these commands complete, `go.sum` will be updated and the build will succe
 
 1. ✅ Verify prerequisites (Go, Docker, credentials/.env)
 2. ✅ Test code: `cd dagger_go && set -a && source ../credentials/.env && set +a && go test -v`
-3. ✅ Build binary: `cd dagger_go && go mod download dagger.io/dagger && go build -o railway-dagger-go main.go`
+3. ✅ Build binary: `cd dagger_go && go mod download dagger.io/dagger && go build -o cert-parser-dagger-go main.go`
 4. ✅ Run pipeline: `set -a && source ../credentials/.env && set +a && export CR_PAT USERNAME && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh`
 5. ✅ Monitor logs in Dagger Cloud (link provided in output)
 6. ✅ Check image in GitHub Container Registry

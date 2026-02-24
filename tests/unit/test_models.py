@@ -58,6 +58,7 @@ class TestCertificateRecord:
         """
         cert = CertificateRecord(certificate=b"\x30\x00")
         assert cert.issuer is None
+        assert cert.master_list_issuer is None
         assert cert.subject_key_identifier is None
         assert cert.authority_key_identifier is None
         assert cert.x_500_issuer is None

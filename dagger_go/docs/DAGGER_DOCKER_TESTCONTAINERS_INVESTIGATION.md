@@ -191,7 +191,7 @@ for _, testModule := range testModules {
 
 ---
 
-## Integration with Railway Framework
+## Integration with cert-parser
 
 ### Current State
 - ✅ Go-based Dagger pipeline exists (`dagger_go/main.go`)
@@ -203,10 +203,10 @@ for _, testModule := range testModules {
 **Option A: Minimal Integration (Recommended)**
 ```go
 // In dagger_go/main.go
-func (r *Railway) TestWithDocker(ctx context.Context) error {
+func (r *Pipeline) TestWithDocker(ctx context.Context) error {
     testContainer := dag.Container().
         From("maven:3.9-openjdk-25").
-        WithMountedDirectory("/app", railwaySource).
+        WithMountedDirectory("/app", appSource).
         With(dag.Testcontainers().Setup).
         WithWorkdir("/app").
         WithExec([]string{"mvn", "clean", "test"})
@@ -299,7 +299,7 @@ testContainer := dag.Container().
 2. **Test Integration Path**
    - Modify `dagger_go/main.go` to add test execution
    - Use Pattern 1 (single test run) initially
-   - Validate with existing Railway test suite
+   - Validate with existing cert-parser test suite
 
 3. **Document Security Posture**
    - Add notes about `TESTCONTAINERS_RYUK_DISABLED`
@@ -346,8 +346,8 @@ import (
 	"fmt"
 )
 
-// TestWithDocker runs Railway tests in a containerized environment with Docker support
-func (r *Railway) TestWithDocker(ctx context.Context) (*Container, error) {
+// TestWithDocker runs cert-parser tests in a containerized environment with Docker support
+func (r *Pipeline) TestWithDocker(ctx context.Context) (*Container, error) {
 	// Use Testcontainers module directly
 	testContainer := dag.Container().
 		From("maven:3.9-openjdk-25").
@@ -376,7 +376,7 @@ func (r *Railway) TestWithDocker(ctx context.Context) (*Container, error) {
 
 ```go
 // TestAllModulesWithSharedDocker runs multiple test modules with shared Docker
-func (r *Railway) TestAllModulesWithSharedDocker(ctx context.Context) error {
+func (r *Pipeline) TestAllModulesWithSharedDocker(ctx context.Context) error {
 	// Start persistent Docker service
 	dockerService := dag.Docker().Daemon().Service()
 	if err := dockerService.Start(ctx); err != nil {
@@ -415,7 +415,7 @@ func (r *Railway) TestAllModulesWithSharedDocker(ctx context.Context) error {
 
 ## Conclusion
 
-Dagger provides **production-ready, fully-featured Docker and Testcontainers integration** suitable for enterprise CI/CD pipelines. The Railway Framework can leverage these capabilities with minimal code changes, following established patterns proven across the Daggerverse ecosystem.
+Dagger provides **production-ready, fully-featured Docker and Testcontainers integration** suitable for enterprise CI/CD pipelines. The cert-parser can leverage these capabilities with minimal code changes, following established patterns proven across the Daggerverse ecosystem.
 
 **Risk Assessment**: ✅ **LOW** for CI/CD use case
 **Implementation Complexity**: ✅ **LOW** (copy-paste pattern from Daggerverse)

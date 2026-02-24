@@ -7,7 +7,7 @@ Place your corporate CA certificates in `credentials/certs/` and run the pipelin
 ```bash
 mkdir -p credentials/certs
 cp /path/to/corporate-ca.pem credentials/certs/
-./railway-corporate-dagger-go
+./cert-parser-corporate-dagger-go
 ```
 
 The pipeline automatically discovers certificates from system stores, Docker/Rancher, and CI/CD environments (Jenkins, GitHub Actions).
@@ -16,7 +16,7 @@ The pipeline automatically discovers certificates from system stores, Docker/Ran
 
 ```bash
 export DEBUG_CERTS=true
-./railway-corporate-dagger-go
+./cert-parser-corporate-dagger-go
 ```
 
 ## Automatic Discovery Locations
@@ -43,7 +43,7 @@ export CA_CERTIFICATES_PATH=/custom/path/ca-bundle.pem:/another/path
 **DEBUG_CERTS**: Enable detailed logging
 ```bash
 export DEBUG_CERTS=true
-./railway-corporate-dagger-go
+./cert-parser-corporate-dagger-go
 ```
 
 **Output**:
@@ -60,7 +60,7 @@ Configure corporate proxy (auto-detected):
 
 ```bash
 export HTTPS_PROXY=http://proxy.company.com:8080
-./railway-corporate-dagger-go
+./cert-parser-corporate-dagger-go
 ```
 
 **HTTP_PROXY/HTTPS_PROXY**: Proxy configuration (auto-detected)
@@ -75,7 +75,7 @@ export HTTPS_PROXY=http://proxy.company.com:8080
 pipeline {
     stages {
         stage('Build') {
-            steps { sh './railway-corporate-dagger-go' }
+            steps { sh './cert-parser-corporate-dagger-go' }
         }
     }
 }
@@ -90,7 +90,7 @@ jobs:
         run: |
           mkdir -p ${{ runner.temp }}/ca-certificates
           echo "${{ secrets.CORPORATE_CA }}" > ${{ runner.temp }}/ca-certificates/corporate-ca.pem
-      - run: ./railway-corporate-dagger-go
+      - run: ./cert-parser-corporate-dagger-go
 ```
 
 ## Troubleshooting

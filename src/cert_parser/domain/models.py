@@ -29,6 +29,7 @@ class CertificateRecord:
     subject_key_identifier: str | None = None
     authority_key_identifier: str | None = None
     issuer: str | None = None
+    master_list_issuer: str | None = None
     x_500_issuer: bytes | None = field(default=None, repr=False)
     source: str | None = None
     isn: str | None = None
