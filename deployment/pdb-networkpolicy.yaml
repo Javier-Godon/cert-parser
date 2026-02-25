@@ -1,0 +1,60 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cert-parser-pdb
+  namespace: default
+  labels:
+    app: cert-parser
+spec:
+  # Single replica: allow eviction (minAvailable: 0) so nodes can drain.
+  # Set to 1 if you run multiple replicas and need continuous availability.
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: cert-parser
+  unhealthyPodEvictionPolicy: AlwaysAllow
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cert-parser-network-policy
+  namespace: default
+  labels:
+    app: cert-parser
+spec:
+  podSelector:
+    matchLabels:
+      app: cert-parser
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow health/ready probes from the same namespace (kubelet uses host network)
+  - from:
+    - podSelector: {}
+  # Allow traffic from monitoring namespace (Prometheus scraping)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+  egress:
+  # DNS resolution
+  - ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # HTTPS: OIDC token endpoint, SFC login, certificate download
+  - ports:
+    - protocol: TCP
+      port: 443
+  # HTTP: internal services (if any)
+  - ports:
+    - protocol: TCP
+      port: 80
+  # PostgreSQL
+  - ports:
+    - protocol: TCP
+      port: 5432

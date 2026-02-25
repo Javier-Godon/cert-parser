@@ -877,28 +877,26 @@ For production deployment on Kubernetes:
 
 ```bash
 # 1. Build Docker image
-./k8s/scripts/build-and-test.sh v0.1.0
+./deployment/scripts/build-and-test.sh v0.1.0
 
 # 2. Deploy to local K8s cluster (for testing)
-./k8s/scripts/deploy-local.sh kind
+./deployment/scripts/deploy-local.sh kind
 
 # 3. Validate deployment
-./k8s/scripts/validate-deployment.sh cert-parser
-
-# 4. Full production guide
-see [k8s/DEPLOYMENT.md](k8s/DEPLOYMENT.md)
+./deployment/scripts/validate-deployment.sh cert-parser
 ```
 
 Key configuration:
 - **Docker image**: Multi-stage build with Python 3.14, non-root user, health checks
-- **ASGI server**: Uvicorn + FastAPI with `/health`, `/ready`, `/info` endpoints
+- **ASGI server**: Uvicorn + FastAPI with `/health`, `/ready`, `/info`, `/trigger` endpoints
 - **Configuration**: ConfigMap (non-sensitive) + Secret (sensitive — managed externally)
+- **Env var naming**: pydantic-settings `env_nested_delimiter="__"` — use `AUTH__URL`, `DATABASE__HOST`, etc.
 - **Graceful shutdown**: SIGTERM → Uvicorn drains connections → exit in <30s
 - **Probes**: Startup (5m window), Liveness (30s interval), Readiness (10s interval)
-- **Scripts**: Build, deploy, and validate helpers included
-- **Manifests**: deployment.yaml, service.yaml, configmap.yaml, pdb-networkpolicy.yaml
+- **Scripts**: Build, deploy, and validate helpers in `deployment/scripts/`
+- **Manifests**: `deployment/` — configmap.yaml, secret.yaml, deployment.yaml, service.yaml, pdb-networkpolicy.yaml, kustomization.yaml
 
-See [k8s/DEPLOYMENT.md](k8s/DEPLOYMENT.md) for complete Kubernetes deployment documentation, including:
+See `deployment/` for all Kubernetes manifests, including:
 - Building and pushing Docker images
 - Secrets management (sealed-secrets, kustomize, Helm)
 - ConfigMap override patterns

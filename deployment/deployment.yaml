@@ -2,11 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cert-parser
-  namespace: default  # Change to your namespace
+  namespace: default
   labels:
     app: cert-parser
-    version: v0.1.0
 spec:
+  # Single replica: cert-parser is a background scheduler, not a load-balanced service.
+  # Scale to 2+ only if you need high availability for the /trigger and health endpoints.
   replicas: 1
   strategy:
     type: RollingUpdate
@@ -21,113 +22,94 @@ spec:
       labels:
         app: cert-parser
       annotations:
-        prometheus.io/scrape: "true"
+        prometheus.io/scrape: "false"   # No metrics endpoint yet; set true when added
         prometheus.io/port: "8000"
-        prometheus.io/path: "/metrics"
     spec:
-      # Security context: run as non-root
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
+        runAsUser: 1000      # certparser user created in Dockerfile
         fsGroup: 1000
-      
-      # Grace period for graceful shutdown (Uvicorn drains connections)
+
+      # Allow time for Uvicorn to drain connections on shutdown
       terminationGracePeriodSeconds: 30
 
       containers:
       - name: cert-parser
-        # Image built via: docker build -t cert-parser:v0.1.0 .
-        image: cert-parser:v0.1.0
-        imagePullPolicy: IfNotPresent
+        # Image published by the Dagger pipeline to GHCR.
+        # Replace :latest with a pinned tag (e.g. v0.1.0-abc1234-20260225-0819)
+        # for reproducible deployments.
+        image: ghcr.io/javier-godon/cert-parser:latest
+        imagePullPolicy: Always
 
         ports:
         - name: http
           containerPort: 8000
           protocol: TCP
 
-        # Environment variables from ConfigMap (non-sensitive)
+        # Non-sensitive config from ConfigMap.
+        # pydantic-settings reads AUTH__URL → auth.url via env_nested_delimiter="__"
         envFrom:
         - configMapRef:
             name: cert-parser-config
-        
-        # Sensitive environment variables from Secret
-        env:
-        - name: AUTH_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: cert-parser-secrets
-              key: auth-client-secret
-        - name: AUTH_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: cert-parser-secrets
-              key: auth-password
-        - name: DATABASE_DSN
-          valueFrom:
-            secretKeyRef:
-              name: cert-parser-secrets
-              key: database-dsn
+        # Secrets: AUTH__CLIENT_SECRET, AUTH__PASSWORD, DATABASE__PASSWORD
+        # Keys match env var names exactly, so envFrom works cleanly.
+        - secretRef:
+            name: cert-parser-secrets
 
-        # Startup probe: waits for app to start (slow CMS parsing is OK here)
+        # Startup probe: wide window for the first pipeline run on startup
         startupProbe:
           httpGet:
             path: /ready
             port: http
-            scheme: HTTP
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
-          failureThreshold: 30  # 30 * 10s = 5 minutes total startup window
+          failureThreshold: 30    # 30 × 10s = 5 min total startup window
 
-        # Liveness probe: detects stuck/crashed scheduler
+        # Liveness probe: restart if the scheduler hangs or crashes
         livenessProbe:
           httpGet:
             path: /health
             port: http
-            scheme: HTTP
           initialDelaySeconds: 10
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
 
-        # Readiness probe: indicates when scheduler is ready for full load
+        # Readiness probe: only route traffic once fully initialised
         readinessProbe:
           httpGet:
             path: /ready
             port: http
-            scheme: HTTP
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
 
-        # Resource constraints (adjust to your actual needs)
         resources:
           requests:
             memory: "256Mi"
-            cpu: "250m"
+            cpu: "100m"
           limits:
             memory: "512Mi"
             cpu: "500m"
 
-        # Volumes for logs (optional, if needed)
         volumeMounts:
         - name: tmp
           mountPath: /tmp
 
-        # Security: read-only root filesystem where possible
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: false  # Set to true if logs are not needed locally
+          readOnlyRootFilesystem: false   # Uvicorn writes .pyc files; set true with venv in image
 
       volumes:
       - name: tmp
         emptyDir: {}
 
-      # Pod disruption budget: allow rolling updates
+      # Soft anti-affinity: spread replicas across nodes when scaling
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

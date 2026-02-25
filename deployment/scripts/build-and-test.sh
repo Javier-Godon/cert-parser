@@ -1,6 +1,6 @@
 #!/bin/bash
-# build-and-test.sh — Build Docker image and run local tests
-# Usage: ./k8s/scripts/build-and-test.sh [version]
+# build-and-test.sh — Build Docker image and run local smoke tests (no K8s needed)
+# Usage: ./deployment/scripts/build-and-test.sh [version]
 
 set -euo pipefail
 
@@ -11,7 +11,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Building ${IMAGE_NAME}..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Build image
 docker build \
   --progress=plain \
   -t "${IMAGE_NAME}" \
@@ -22,19 +21,14 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Image built successfully: ${IMAGE_NAME}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Show image info
 docker images "${IMAGE_NAME}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Testing image locally..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
 
-# Test 1: Check if image runs without error
-echo "[Test 1] Starting container..."
+# Start container (no real credentials — only testing that it starts)
 CONTAINER_ID=$(docker run -d \
   --health-cmd='curl -f http://localhost:8000/health || exit 1' \
   --health-interval=5s \
@@ -42,45 +36,34 @@ CONTAINER_ID=$(docker run -d \
   --health-retries=3 \
   "${IMAGE_NAME}")
 
-sleep 2
+sleep 3
 
-echo "[Test 2] Checking health endpoint..."
-docker exec "${CONTAINER_ID}" curl -s http://localhost:8000/health || {
+echo "[Test 1] Checking /health endpoint..."
+docker exec "${CONTAINER_ID}" curl -sf http://localhost:8000/health || {
   echo "❌ Health check failed"
   docker logs "${CONTAINER_ID}"
   docker rm -f "${CONTAINER_ID}"
   exit 1
 }
+echo "✓ /health OK"
 
-echo "✓ Health check passed"
-
-echo "[Test 3] Checking info endpoint..."
-docker exec "${CONTAINER_ID}" curl -s http://localhost:8000/info || {
-  echo "❌ Info endpoint failed"
+echo "[Test 2] Checking /info endpoint..."
+docker exec "${CONTAINER_ID}" curl -sf http://localhost:8000/info || {
+  echo "❌ /info endpoint failed"
   docker logs "${CONTAINER_ID}"
   docker rm -f "${CONTAINER_ID}"
   exit 1
 }
+echo "✓ /info OK"
 
-echo "✓ Info endpoint passed"
+echo "[Test 3] Checking container health status..."
+docker inspect --format='Health status: {{json .State.Health.Status}}' "${CONTAINER_ID}"
 
-# Check health status
 echo ""
-echo "[Test 4] Checking container health status..."
-docker inspect --format='{{json .State.Health.Status}}' "${CONTAINER_ID}"
-
-# Clean up
-echo ""
-echo "Cleaning up..."
+echo "Cleaning up container..."
 docker rm -f "${CONTAINER_ID}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✓ All tests passed!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Next steps:"
-echo "  1. Push to registry: docker push ${IMAGE_NAME}"
-echo "  2. Deploy to K8s: kubectl apply -f k8s/"
-echo "  3. Check deployment: kubectl get deployment,pods,svc"
-echo ""
