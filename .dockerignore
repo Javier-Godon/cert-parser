@@ -33,6 +33,7 @@ tests/
 # Documentation (not needed at runtime)
 docs/
 *.md
+!README.md
 LICENSE
 
 # Kubernetes manifests
