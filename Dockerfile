@@ -14,8 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
+# Copy dependency files (README.md required by hatchling metadata validation)
 COPY pyproject.toml pyproject.toml
+COPY README.md README.md
 COPY python_framework/ python_framework/
 
 # Install Python dependencies into /build/venv
