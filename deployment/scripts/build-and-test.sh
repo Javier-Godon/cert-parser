@@ -28,15 +28,33 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Testing image locally..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Start container (no real credentials — only testing that it starts)
+# Start container with all required env vars (pydantic-settings validates at startup).
+# Values are fake — RUN_ON_STARTUP=false prevents any actual pipeline execution.
+# Adapters create httpx/psycopg connections lazily, so no real network calls happen.
 CONTAINER_ID=$(docker run -d \
+  -e AUTH__URL="http://localhost/fake-oidc" \
+  -e AUTH__CLIENT_ID="smoke-test-client" \
+  -e AUTH__CLIENT_SECRET="smoke-test-secret" \
+  -e AUTH__USERNAME="smoke-test-user" \
+  -e AUTH__PASSWORD="smoke-test-password" \
+  -e LOGIN__URL="http://localhost/fake-login" \
+  -e LOGIN__BORDER_POST_ID="1" \
+  -e LOGIN__BOX_ID="1" \
+  -e LOGIN__PASSENGER_CONTROL_TYPE="1" \
+  -e DOWNLOAD__URL="http://localhost/fake-download" \
+  -e DATABASE__HOST="localhost" \
+  -e DATABASE__NAME="cert_parser_db" \
+  -e DATABASE__USERNAME="cert_parser" \
+  -e DATABASE__PASSWORD="smoke-test-db-password" \
+  -e RUN_ON_STARTUP="false" \
+  -e LOG_LEVEL="WARNING" \
   --health-cmd='curl -f http://localhost:8000/health || exit 1' \
   --health-interval=5s \
   --health-timeout=2s \
   --health-retries=3 \
   "${IMAGE_NAME}")
 
-sleep 3
+sleep 5
 
 echo "[Test 1] Checking /health endpoint..."
 docker exec "${CONTAINER_ID}" curl -sf http://localhost:8000/health || {

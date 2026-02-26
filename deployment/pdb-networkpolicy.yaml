@@ -2,7 +2,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: cert-parser-pdb
-  namespace: default
+  namespace: cert-parser
   labels:
     app: cert-parser
 spec:
@@ -20,7 +20,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: cert-parser-network-policy
-  namespace: default
+  namespace: cert-parser
   labels:
     app: cert-parser
 spec:
@@ -31,10 +31,14 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow health/ready probes from the same namespace (kubelet uses host network)
-  - from:
-    - podSelector: {}
-  # Allow traffic from monitoring namespace (Prometheus scraping)
+  # Allow ingress on port 8000 from all sources.
+  # Kubelet health probes originate from the node's primary network interface, NOT
+  # from a pod, so `podSelector: {}` cannot be used — it would silently block them.
+  # The Service is ClusterIP-only, so port 8000 is unreachable from outside the cluster.
+  - ports:
+    - port: 8000
+      protocol: TCP
+  # Allow Prometheus to reach port 8000 from the monitoring namespace
   - from:
     - namespaceSelector:
         matchLabels:

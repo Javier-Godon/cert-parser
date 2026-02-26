@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cert-parser
-  namespace: default
+  namespace: cert-parser
   labels:
     app: cert-parser
 spec:
@@ -32,6 +32,15 @@ spec:
 
       # Allow time for Uvicorn to drain connections on shutdown
       terminationGracePeriodSeconds: 30
+
+      # imagePullSecrets:
+      # - name: ghcr-credentials
+      # Required if ghcr.io image is private. Create with:
+      #   kubectl create secret docker-registry ghcr-credentials \
+      #     --docker-server=ghcr.io \
+      #     --docker-username=<github-user> \
+      #     --docker-password=<CR_PAT> \
+      #     -n cert-parser
 
       containers:
       - name: cert-parser
@@ -103,7 +112,7 @@ spec:
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: false   # Uvicorn writes .pyc files; set true with venv in image
+          readOnlyRootFilesystem: false   # APScheduler / Python internals may write to /tmp; safe because /tmp is an emptyDir mount
 
       volumes:
       - name: tmp

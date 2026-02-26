@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cert-parser-config
-  namespace: default
+  namespace: cert-parser
   labels:
     app: cert-parser
 data:
