@@ -6,37 +6,47 @@ metadata:
   labels:
     app: cert-parser
 data:
-  # ── pydantic-settings uses "__" as nested delimiter ──────────
+  # ── pydantic-settings uses "__" as nested delimiter ──────────────────────
   # AUTH__URL maps to auth.url, DATABASE__HOST maps to database.host, etc.
+  #
+  # All service URLs use in-cluster DNS: <service-name>.<namespace>.svc.cluster.local
+  # prt-services-simulator runs in namespace "prt-simulator" on port 8087.
+  # PostgreSQL runs in namespace "postgres" (service: blue-postgres) on port 5432.
 
-  # ── OpenID Connect (Step 1: access token) ────────────────────
-  AUTH__URL: "https://keycloak.example.com/realms/your-realm/protocol/openid-connect/token"
-  AUTH__CLIENT_ID: "your-client-id"
-  AUTH__USERNAME: "your-service-account-username"
+  # ── OpenID Connect (Step 1: access token) ────────────────────────────────
+  # Simulator endpoint: POST /protocol/openid-connect/token
+  AUTH__URL: "http://prt-services-simulator.prt-simulator.svc.cluster.local:8087/protocol/openid-connect/token"
+  AUTH__CLIENT_ID: "cert-parser-client"
+  AUTH__USERNAME: "operator@border.gov"
 
-  # ── SFC Login (Step 2: SFC token) ────────────────────────────
-  LOGIN__URL: "https://api.example.com/auth/v1/login"
+  # ── SFC Login (Step 2: SFC token) ────────────────────────────────────────
+  # Simulator endpoint: POST /auth/v1/login
+  LOGIN__URL: "http://prt-services-simulator.prt-simulator.svc.cluster.local:8087/auth/v1/login"
   LOGIN__BORDER_POST_ID: "1"
-  LOGIN__BOX_ID: "1"
+  LOGIN__BOX_ID: "XX/99/X"
   LOGIN__PASSENGER_CONTROL_TYPE: "1"
 
-  # ── Certificate Download (Step 3) ────────────────────────────
-  DOWNLOAD__URL: "https://api.example.com/certificates/csca"
+  # ── Certificate Download (Step 3) ────────────────────────────────────────
+  # Simulator endpoint: GET /certificates/csca
+  DOWNLOAD__URL: "http://prt-services-simulator.prt-simulator.svc.cluster.local:8087/certificates/csca"
 
-  # ── PostgreSQL (individual components, DATABASE__DSN in Secret overrides) ──
-  DATABASE__HOST: "postgres.example.com"
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  # Service: blue-postgres in namespace "postgres", port 5432.
+  # DATABASE__DSN in secret.yaml overrides these individual fields if set.
+  DATABASE__HOST: "blue-postgres.postgres.svc.cluster.local"
   DATABASE__PORT: "5432"
   DATABASE__NAME: "cert_parser_db"
   DATABASE__USERNAME: "cert_parser"
 
-  # ── HTTP client ───────────────────────────────────────────────
+  # ── HTTP client ───────────────────────────────────────────────────────────
   HTTP_TIMEOUT_SECONDS: "60"
 
-  # ── Scheduler (5-field cron: minute hour dom month dow) ───────
-  # "0 */6 * * *" = every 6 hours (default)
+  # ── Scheduler (5-field cron: minute hour dom month dow) ───────────────────
+  # "0 */6 * * *" = every 6 hours
   # "0 2 * * *"   = daily at 02:00
+  # "*/5 * * * *" = every 5 minutes (testing)
   SCHEDULER__CRON: "0 */6 * * *"
 
-  # ── Application ───────────────────────────────────────────────
+  # ── Application ───────────────────────────────────────────────────────────
   RUN_ON_STARTUP: "false"
   LOG_LEVEL: "INFO"

@@ -33,20 +33,18 @@ spec:
       # Allow time for Uvicorn to drain connections on shutdown
       terminationGracePeriodSeconds: 30
 
-      # imagePullSecrets:
-      # - name: ghcr-credentials
-      # Required if ghcr.io image is private. Create with:
-      #   kubectl create secret docker-registry ghcr-credentials \
-      #     --docker-server=ghcr.io \
-      #     --docker-username=<github-user> \
-      #     --docker-password=<CR_PAT> \
-      #     -n cert-parser
+      imagePullSecrets:
+        - name: ghcr-secret
 
       containers:
       - name: cert-parser
         # Image published by the Dagger pipeline to GHCR.
-        # Replace :latest with a pinned tag (e.g. v0.1.0-abc1234-20260225-0819)
-        # for reproducible deployments.
+        # ⚠  Do NOT rely on :latest for production — it is stale until the pipeline
+        #    re-pushes it. After running `cd dagger_go && ./run.sh`, look for the
+        #    "📦 Versioned:" line in the output and pin that tag here, e.g.:
+        #    image: ghcr.io/javier-godon/cert-parser:v0.1.0-abc1234-20260302-0910
+        # If using :latest, always pair with imagePullPolicy: Always AND run:
+        #    kubectl rollout restart deployment/cert-parser -n cert-parser
         image: ghcr.io/javier-godon/cert-parser:latest
         imagePullPolicy: Always
 

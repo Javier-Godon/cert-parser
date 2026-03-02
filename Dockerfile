@@ -18,14 +18,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml pyproject.toml
 COPY README.md README.md
 COPY python_framework/ python_framework/
+COPY src/ src/
 
-# Install Python dependencies into /build/venv
-RUN python -m venv /build/venv
-ENV PATH="/build/venv/bin:$PATH"
+# Create the venv at /app/venv — the SAME path used in the runtime stage.
+# This ensures all pip-generated entry-point scripts have the correct shebang
+# (#!/app/venv/bin/python) and are executable in the runtime container.
+RUN python -m venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
 
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -e "./python_framework" && \
-    pip install -e ".[server]"
+    pip install "./python_framework" && \
+    pip install ".[server]"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ STAGE 2: Runtime ━━━━━━━━━━━━━━━━━
 FROM python:3.14-slim
@@ -44,8 +47,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user for security
 RUN useradd -m -u 1000 -s /bin/bash certparser
 
-# Copy Python virtual environment from builder
-COPY --from=builder --chown=certparser:certparser /build/venv /app/venv
+# Copy Python virtual environment from builder (shebangs point to /app/venv/bin/python ✓)
+COPY --from=builder --chown=certparser:certparser /app/venv /app/venv
 
 # Copy application source
 COPY --chown=certparser:certparser src/ /app/src/
@@ -54,7 +57,7 @@ COPY --chown=certparser:certparser src/ /app/src/
 ENV PATH="/app/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH="/app/src:$PYTHONPATH"
+    PYTHONPATH=/app/src
 
 # Switch to non-root user
 USER certparser
@@ -66,7 +69,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Entrypoint: start Uvicorn with cert_parser ASGI app
-# Uvicorn handles SIGTERM gracefully (drains existing connections, exits cleanly)
-ENTRYPOINT ["uvicorn"]
+# Use python -m uvicorn instead of the entry-point script to avoid any
+# shebang resolution issues across platforms and base image variants.
+ENTRYPOINT ["python", "-m", "uvicorn"]
 CMD ["cert_parser.asgi:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

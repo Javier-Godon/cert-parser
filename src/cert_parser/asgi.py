@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     global _scheduler_thread, _scheduler_started, _error_message
 
-    log.info("asgi.startup", event="lifespan_startup")
+    log.info("asgi.startup")
 
     try:
         settings = AppSettings()

@@ -62,3 +62,6 @@ tests/fixtures/*.key
 *.key
 *.pem
 *.csr
+
+# Kubernetes secret with real GHCR PAT token — never commit
+deployment/ghcr-secret.yaml

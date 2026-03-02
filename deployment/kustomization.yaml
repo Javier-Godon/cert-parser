@@ -4,6 +4,8 @@ kind: Kustomization
 namespace: cert-parser
 
 resources:
+- namespace.yaml
+- ghcr-secret.yaml
 - configmap.yaml
 - secret.yaml
 - deployment.yaml

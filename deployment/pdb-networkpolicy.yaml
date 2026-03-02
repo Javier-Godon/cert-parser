@@ -50,15 +50,20 @@ spec:
       port: 53
     - protocol: TCP
       port: 53
-  # HTTPS: OIDC token endpoint, SFC login, certificate download
-  - ports:
+  # prt-services-simulator in namespace "prt-simulator" (port 8087)
+  # Covers: POST /protocol/openid-connect/token, POST /auth/v1/login, GET /certificates/csca
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: prt-simulator
+    ports:
     - protocol: TCP
-      port: 443
-  # HTTP: internal services (if any)
-  - ports:
-    - protocol: TCP
-      port: 80
-  # PostgreSQL
-  - ports:
+      port: 8087
+  # PostgreSQL in namespace "postgres" (service: blue-postgres, port 5432)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: postgres
+    ports:
     - protocol: TCP
       port: 5432
