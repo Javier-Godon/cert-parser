@@ -35,8 +35,6 @@ from cert_parser.scheduler import create_scheduler
 # These are set during app startup and used for health checks.
 
 _scheduler_thread: threading.Thread | None = None
-_scheduler_started = False
-_scheduler_ready = False  # True after first successful run
 _error_message: str | None = None
 _pipeline_fn: Callable[[], Result[int]] | None = None
 log = structlog.get_logger()
@@ -50,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     Startup: Create adapters and start scheduler in background thread.
     Shutdown: Gracefully stop scheduler and thread.
     """
-    global _scheduler_thread, _scheduler_started, _error_message
+    global _scheduler_thread, _error_message
 
     log.info("asgi.startup")
 
@@ -102,12 +100,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.error("asgi.init_error", error=error_msg)
         raise
 
-    # Start scheduler in background thread
     def run_scheduler() -> None:
         """Run scheduler in background thread (blocking)."""
-        global _scheduler_started, _scheduler_ready, _error_message
+        global _error_message
         try:
-            _scheduler_started = True
             log.info("asgi.scheduler_thread_started")
             scheduler.start()
         except KeyboardInterrupt:
@@ -120,9 +116,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
     _scheduler_thread.start()
 
-    # Mark ready after scheduler starts (not after first run, for faster startup)
-    await asyncio.sleep(0.1)
-    _scheduler_ready = True
+    # Brief pause to let the thread start before accepting readiness checks
+    await asyncio.sleep(0.5)
 
     log.info("asgi.startup_complete")
 
@@ -191,33 +186,27 @@ async def ready() -> JSONResponse:
     """
     Kubernetes readiness probe — checks if the service is ready to handle requests.
 
-    Returns 202 if:
-      - Scheduler started
-      - Configuration loaded
-      - Scheduler thread is alive
-    Returns 503 if not yet ready.
+    Returns 200 when the scheduler thread is alive and no fatal startup error occurred.
+    Returns 503 if configuration failed or the scheduler thread has not started yet.
 
-    Note: For a batch job, "ready" means the scheduler is running and the first
-    interval timer has started (not necessarily that it has completed a run).
+    Note: For a batch job, "ready" means the scheduler is running. It does NOT
+    require a successful pipeline run — the scheduler fires on its cron schedule.
     """
-    if not _scheduler_ready or not _scheduler_started:
-        return JSONResponse(
-            status_code=202,
-            content={"status": "starting", "scheduler_started": _scheduler_started},
-        )
-
     if _error_message:
         return JSONResponse(
             status_code=503,
             content={"status": "error", "error": _error_message},
         )
 
+    if not _scheduler_thread or not _scheduler_thread.is_alive():
+        return JSONResponse(
+            status_code=503,
+            content={"status": "starting", "reason": "scheduler thread not yet running"},
+        )
+
     return JSONResponse(
         status_code=200,
-        content={
-            "status": "ready",
-            "scheduler_running": _scheduler_thread is not None and _scheduler_thread.is_alive(),
-        },
+        content={"status": "ready", "scheduler_running": True},
     )
 
 
@@ -232,8 +221,6 @@ async def info() -> dict[str, Any]:
         "name": "cert-parser",
         "version": "0.1.0",
         "scheduler_running": _scheduler_thread is not None and _scheduler_thread.is_alive(),
-        "scheduler_started": _scheduler_started,
-        "scheduler_ready": _scheduler_ready,
         "has_error": _error_message is not None,
     }
 
