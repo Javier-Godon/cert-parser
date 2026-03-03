@@ -42,6 +42,10 @@ data/*.bin
 data/*.ml
 data/*.der
 
+# Compiled Dagger Go pipeline binaries — rebuilt by run.sh / run-corporate.sh
+dagger_go/cert-parser-dagger-go
+dagger_go/cert-parser-corporate-dagger-go
+
 # ICAO PKD confidential resources — NEVER commit (large LDIF dumps, certificates)
 src/cert_parser/resources/confidential/
 

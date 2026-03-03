@@ -1,6 +1,6 @@
-# Corporate Pipeline - MITM Proxy & Custom CA Support
+# Corporate Pipeline — MITM Proxy & Custom CA Support
 
-Complete guide to using the corporate version of the Railway-Oriented Java CI/CD pipeline with custom certificate authority and proxy support.
+Complete guide to using the corporate version of the cert-parser Python CI/CD pipeline with custom certificate authority and proxy support.
 
 ## Overview
 
@@ -93,30 +93,44 @@ After: Corporate Pipeline
    [✓] Docker images pull successfully
 ```
 
-### File: `corporate_main.go` (130+ lines)
+### File: `corporate_main.go` (~1200 lines)
 
-**New Types:**
+**Key Type:**
 ```go
 type CorporatePipeline struct {
-    *RailwayPipeline         // Inherits original pipeline
-    CACertPaths []string     // Paths to CA .pem files
-    ProxyURL    string       // Proxy URL (http://proxy.com:8080)
-    DebugMode   bool         // Enable diagnostics
+    RepoName            string
+    ProjectName         string   // Discovered from pyproject.toml
+    ImageName           string
+    GitRepo             string
+    GitBranch           string
+    GitUser             string
+    PipCache            *dagger.CacheVolume
+    HasDocker           bool
+    RunUnitTests        bool
+    RunIntegrationTests bool
+    RunAcceptanceTests  bool
+    RunLint             bool
+    RunTypeCheck        bool
+    CACertPaths         []string  // Paths to CA certificates
+    ProxyURL            string    // HTTP proxy URL
+    DebugMode           bool      // Enable certificate diagnostics
 }
 ```
 
-**New Functions:**
-- `corporateMain()` - Entry point (calls corporate pipeline)
-- `collectCACertificates()` - Finds all .pem files in credentials/certs/
-- `runDiagnostics()` - Creates diagnostic container
-- `runCorporate()` - Main pipeline with CA/proxy support
+**Key Functions:**
+- `main()` — entry point; reads env vars; initialises `CorporatePipeline`; calls `runCorporate()`
+- `collectCACertificates()` — auto-discovers `.pem`/`.crt` files from 50+ locations
+- `runDiagnostics()` — spins up a `curlimages/curl` container to diagnose TLS issues
+- `(cp) setupBuildEnv()` — builds the Python container with CA certs mounted + proxy vars set
+- `(cp) runCorporate()` — main 7-stage pipeline (clone → tests → lint → type-check → build → push)
 
 **What It Does:**
-1. Collects all .pem files from `credentials/certs/`
-2. Mounts them into build containers
-3. Updates CA certificate store in container
-4. Configures HTTP_PROXY/HTTPS_PROXY if set
-5. Runs test → build → dockerize → publish
+1. Collects CA certificate paths from multiple sources (ordered by priority)
+2. Creates a Python 3.14-slim Dagger container with certs mounted in `/usr/local/share/ca-certificates/`
+3. Runs `update-ca-certificates` to register them with the OS trust store
+4. Sets `HTTP_PROXY`, `HTTPS_PROXY`, `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE` env vars
+5. Installs `python_framework` then `cert-parser[dev,server]` using pip (now proxy-aware)
+6. Runs all 7 pipeline stages with the prepared container
 
 ---
 
@@ -191,45 +205,49 @@ set -a && source ../credentials/.env && set +a
 
 ## How Certificate Mounting Works
 
-### Inside the Corporate Pipeline
+### Inside the Corporate Pipeline (`setupBuildEnv()`)
 
 ```go
-// For each .pem file in credentials/certs/
+// For each CA certificate path discovered:
 for _, certPath := range cp.CACertPaths {
-    certData, _ := ioutil.ReadFile(certPath)
-
-    // Mount to container
-    containerPath := fmt.Sprintf("/etc/ssl/certs/%s", filepath.Base(certPath))
-    setupContainer = setupContainer.WithNewFile(containerPath, string(certData))
+    filename := filepath.Base(certPath)
+    info, _ := os.Stat(certPath)
+    if info.IsDir() {
+        container = container.WithMountedDirectory(
+            "/usr/local/share/ca-certificates/"+filename,
+            client.Host().Directory(certPath),
+        )
+    } else {
+        container = container.WithMountedFile(
+            "/usr/local/share/ca-certificates/"+filename,
+            client.Host().File(certPath),
+        )
+    }
 }
-
-// Update CA certificate store
-setupContainer = setupContainer.WithExec([]string{"bash", "-c", `
-    # Detect OS and update accordingly
-    if command -v update-ca-certificates; then
-        update-ca-certificates  # Debian/Ubuntu
-    elif command -v update-ca-trust; then
-        update-ca-trust          # RHEL/Amazon Linux
-    fi
-`})
+// Register them with the OS trust store (Debian/Ubuntu)
+container = container.WithExec([]string{"update-ca-certificates"})
 ```
 
-### Inside Build Container
+### Inside the Build Container (python:3.14-slim)
 
 ```
-Container: amazoncorretto:25.0.1
+Container: python:3.14-slim
+├── /usr/local/share/ca-certificates/
+│   ├── company-root-ca.pem    (YOUR CA — mounted from host)
+│   └── proxy-mitm-ca.pem      (YOUR CA — mounted from host)
 ├── /etc/ssl/certs/
-│   ├── ca-bundle.crt          (system CAs)
-│   ├── company-root-ca.pem    (YOUR CA)
-│   ├── proxy-mitm-ca.pem      (YOUR CA)
-│   └── ...
-└── /root/.m2/                 (Maven cache)
+│   └── ca-certificates.crt    (updated by update-ca-certificates)
+└── /app/                      (cert-parser source + venv)
 
 Environment Variables:
 ├── HTTP_PROXY=http://proxy.company.com:8080
 ├── HTTPS_PROXY=https://proxy.company.com:8080
+├── http_proxy=http://proxy.company.com:8080
+├── https_proxy=http://proxy.company.com:8080
 ├── NO_PROXY=localhost,127.0.0.1,.local
-└── [Maven inherits these automatically]
+├── REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+├── SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+└── CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 ```
 
 ---
@@ -405,31 +423,32 @@ Your original `main.go` is 100% protected:
 
 ```
 dagger_go/
-├── main.go
-│   ├── RailwayPipeline type
-│   ├── main() function (ORIGINAL)
-│   ├── run() method
-│   └── [170 lines - UNCHANGED]
+├── main.go                              ← Standard pipeline (~572 lines)
+│   ├── type Pipeline struct
+│   ├── func main() — standard entry point
+│   ├── func (p *Pipeline) run() — 7-stage pipeline
+│   ├── func (p *Pipeline) runTestsOnHost() — host-based pytest
+│   └── helpers: extractProjectName, dockerSafeName, parseEnvBool, ...
 │
-├── corporate_main.go (NEW)
-│   ├── CorporatePipeline type (extends RailwayPipeline)
-│   ├── corporateMain() function
-│   ├── collectCACertificates() - NEW
-│   ├── runDiagnostics() - NEW
-│   ├── runCorporate() method - NEW
-│   └── [180+ lines - ADDED]
+├── corporate_main.go                    ← Corporate variant (~1200 lines)
+│   ├── //go:build corporate             ← prevents double-main conflict
+│   ├── type CorporatePipeline struct
+│   ├── func main() — corporate entry point
+│   ├── func collectCACertificates() — 50+ location auto-discovery
+│   ├── func (cp) setupBuildEnv() — mounts CA certs + proxy
+│   ├── func (cp) runCorporate() — 7-stage pipeline with CA/proxy
+│   ├── func (cp) runDiagnostics() — TLS connectivity test via curlimages/curl
+│   ├── func (cp) runTestsOnHostCorp() — host pytest (inherits proxy env)
+│   └── helpers: extractProjectNameCorp, dockerSafeNameCorp, ...
 │
-├── run.sh (ORIGINAL)
-│   └── Uses `go build -o cert-parser-dagger-go main.go`
+├── run.sh                               ← Standard runner
+│   └── go build -o cert-parser-dagger-go main.go
 │
-├── run-corporate.sh (NEW)
-│   ├── Temporarily renames main.go
-│   ├── Creates wrapper main() calling corporateMain()
-│   ├── Compiles: `go build -o cert-parser-dagger-go main.go corporate_main.go`
-│   ├── Restores original main.go
-│   └── Runs binary
+├── run-corporate.sh                     ← Corporate runner
+│   └── go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go
 │
-└── cert-parser-dagger-go (binary - either version)
+├── cert-parser-dagger-go                ← Standard binary
+└── cert-parser-corporate-dagger-go      ← Corporate binary
 ```
 
 ---
@@ -520,5 +539,5 @@ For more information:
 ---
 
 **Status**: ✅ Ready to use
-**Last Updated**: November 22, 2025
-**Original Pipeline**: Completely untouched
+**Last Updated**: March 2026
+**Standard Pipeline**: Completely untouched — `main.go` and `run.sh` are never modified

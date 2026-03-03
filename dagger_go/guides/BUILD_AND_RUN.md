@@ -4,18 +4,19 @@ Complete guide to building and running the cert-parser Python Dagger Go CI/CD pi
 
 ## ⚡ Quick Reference
 
-| Goal | Command | Time |
-|------|---------|------|
-| **Skip all tests** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh`
-| **Unit tests only** | `set -a && source credentials/.env && set +a && RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 5-10s |
-| **Full pipeline** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | 40-60s |
-| **Corporate pipeline** | `set -a && source credentials/.env && set +a && DEBUG_CERTS=$DEBUG_CERTS ./run-corporate.sh` | 40-60s |
-| **Integration only** | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 30-45s |
-| **Default (smart)** | `set -a && source credentials/.env && set +a && ./run.sh` | 40-60s |
-| **Test code** | `cd dagger_go && set -a && source credentials/.env && set +a && go test -v` | 30-60s |
-| **Build binary** | `cd dagger_go && go build -o cert-parser-dagger-go main.go` | 5-10s |
-| **Build corporate** | `cd dagger_go && go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go` | 5-10s |
-| **Debug** | VSC F5 → Debug Dagger Go | Live |
+| Goal                                  | Command | Time |
+|---------------------------------------|---------|------|
+| **Skip all tests**                    | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh`
+| **Unit tests only**                   | `set -a && source credentials/.env && set +a && RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 5-10s |
+| **Full pipeline**                     | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./run.sh` | 40-60s |
+| **Corporate pipeline**                | `set -a && source credentials/.env && set +a && DEBUG_CERTS=$DEBUG_CERTS ./run-corporate.sh` | 40-60s |
+| **Corporate pipeline skip all tests** | `set -a && source credentials/.env && set +a && DEBUG_CERTS=$DEBUG_CERTS && RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run-corporate.sh`
+| **Integration only**                  | `set -a && source credentials/.env && set +a && RUN_UNIT_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh` | 30-45s |
+| **Default (smart)**                   | `set -a && source credentials/.env && set +a && ./run.sh` | 40-60s |
+| **Test code**                         | `cd dagger_go && set -a && source credentials/.env && set +a && go test -v` | 30-60s |
+| **Build binary**                      | `cd dagger_go && go build -o cert-parser-dagger-go main.go` | 5-10s |
+| **Build corporate**                   | `cd dagger_go && go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go` | 5-10s |
+| **Debug**                             | VSC F5 → Debug Dagger Go | Live |
 
 **Key Points**:
 - ❌ **Dagger CLI NOT required** - Uses Dagger Go SDK

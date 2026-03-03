@@ -24,7 +24,9 @@
 13. [Testing Strategy](#testing-strategy)
 14. [Getting Started](#getting-started)
 15. [Kubernetes Deployment](#kubernetes-deployment)
-16. [Design Decisions Log](#design-decisions-log)
+16. [CI/CD Pipeline](#cicd-pipeline)
+17. [Further Reading](#further-reading)
+18. [Design Decisions Log](#design-decisions-log)
 
 ---
 
@@ -904,6 +906,61 @@ See `deployment/` for all Kubernetes manifests, including:
 - Monitoring/alerting setup
 - Troubleshooting guide
 - Production checklist
+
+---
+
+## CI/CD Pipeline
+
+The project ships a **Dagger Go SDK** pipeline under `dagger_go/` that automates the full CI/CD lifecycle: clone → unit tests → integration tests → lint → type-check → Docker build → publish to GHCR.
+
+Two pipeline variants are provided:
+
+| Variant | Entry point | Audience | Build command |
+|---------|------------|----------|---------------|
+| **Standard** | `dagger_go/main.go` | Open networks, Linux/macOS CI | `go build -o railway-dagger-go .` |
+| **Corporate** | `dagger_go/corporate_main.go` | Windows, MITM proxies, custom CAs | `go build -tags corporate -o railway-corporate-dagger-go corporate_main.go` |
+
+```bash
+# Run the standard pipeline
+cd dagger_go && ./run.sh
+
+# Run the corporate pipeline (Windows/corporate CA environments)
+cd dagger_go && ./run-corporate.sh
+
+# Skip slow tests
+cd dagger_go && RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh
+```
+
+See [docs/developer/cicd-pipeline.md](docs/developer/cicd-pipeline.md) for the full reference, including the testcontainers/Docker-in-Docker limitation and how it is solved by running integration and acceptance tests on the host machine.
+
+For corporate Windows environments with MITM proxies or custom CA chains, see [dagger_go/deployment/CORPORATE_PIPELINE.md](dagger_go/deployment/CORPORATE_PIPELINE.md).
+
+---
+
+## Further Reading
+
+### Developer Documentation (`docs/developer/`)
+
+| Document | Description |
+|----------|-------------|
+| [Tooling for Newcomers](docs/developer/tooling-for-newcomers.md) | **Start here** — plain-language explanation of ASGI, FastAPI, Uvicorn, ruff, mypy, structlog, tenacity, and every other library |
+| [Dockerfile Explained](docs/developer/dockerfile.md) | How the multi-stage Docker image works; every instruction, layer caching, security rationale |
+| [CI/CD Pipeline](docs/developer/cicd-pipeline.md) | Dagger Go SDK pipelines — standard and corporate variants, configuration reference, troubleshooting |
+| [Railway-ROP Framework](docs/developer/railway-rop-framework.md) | How `python_framework/railway-rop` is used in cert-parser — `Result[T]`, `flat_map`, `ErrorCode` mapping |
+| [Architecture](docs/developer/architecture.md) | Hexagonal architecture, layer rules, dependency injection, import direction |
+| [Full developer index](docs/developer/README.md) | All 14 developer documents with descriptions |
+
+### Business Documentation (`docs/business/`)
+
+Plain-language explanations of what the application does and why, written for non-technical stakeholders. See [docs/business/README.md](docs/business/README.md).
+
+### Python Framework (`python_framework/`)
+
+The `railway-rop` package lives locally in `python_framework/`. Its full API reference is at [python_framework/README.md](python_framework/README.md).
+
+### CI/CD Pipeline (`dagger_go/`)
+
+The Dagger Go pipeline has its own documentation index at [dagger_go/README.md](dagger_go/README.md).
 
 ---
 

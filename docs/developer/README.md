@@ -4,12 +4,23 @@
 
 ## Table of Contents
 
+### New Developer? Start Here
+
+| Document | Description |
+|----------|-------------|
+| [Tooling for Newcomers](tooling-for-newcomers.md) | **START HERE** — plain-language explanation of ASGI, FastAPI, Uvicorn, ruff, mypy, ROP, and every library |
+| [Dockerfile](dockerfile.md) | How the production Docker image is built — multi-stage, non-root user, health checks |
+| [CI/CD Pipeline](cicd-pipeline.md) | Dagger Go SDK pipelines — standard + corporate, testcontainers limitation, host-based tests |
+| [Railway-ROP Framework](railway-rop-framework.md) | How `python_framework/railway-rop` is used in cert-parser — Result[T], flat_map, ErrorCode |
+
+### Core Application
+
 | Document | Description |
 |----------|-------------|
 | [Architecture](architecture.md) | Hexagonal architecture, layer rules, dependency injection, import direction |
 | [CMS & PKCS#7 Internals](cms-pkcs7-internals.md) | How CMS/PKCS#7 SignedData files work, ASN.1 structures, ICAO Master List format |
 | [Parsing Pipeline](parsing-pipeline.md) | Step-by-step extraction: raw bytes → CertificateRecords, CRLs, revoked entries |
-| [Libraries & Tooling](libraries-and-tooling.md) | Why asn1crypto + cryptography, httpx, psycopg, APScheduler — rationale and usage |
+| [Libraries & Tooling](libraries-and-tooling.md) | Why asn1crypto + cryptography, httpx, psycopg, APScheduler — rationale and deep usage |
 | [Configuration](configuration.md) | Environment variables, pydantic-settings, sub-settings pattern |
 | [Database & Persistence](database-persistence.md) | Schema, transactional replace pattern, FK-safe deletion order |
 | [Error Handling & ROP](error-handling-rop.md) | Railway-Oriented Programming, Result monad, ErrorCode mapping, from_computation |
