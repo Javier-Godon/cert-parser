@@ -674,21 +674,75 @@ Public LDIF dumps: https://download.pkd.icao.int/
 PKD participants connect via dedicated LDAP connections.
 Non-participants download LDIF dumps.
 
+#### Three Public ICAO Download Sources (important distinction)
+
+ICAO exposes three distinct public download sources. These are NOT the same data:
+
+| Source | URL | Contains | Approx. count |
+|--------|-----|----------|:-------------:|
+| **PKD File 1** | https://pkddownloadsg.icao.int/download | DSCs + BCSCs + DSC-level CRLs (`icaopkd-001`) | 100,000+ entries |
+| **PKD File 2** | https://pkddownloadsg.icao.int/download | CSCA Master Lists per country (`icaopkd-002`) | ~300 certs |
+| **ICAO ML** | https://www.icao.int/icao-pkd/icao-master-list | Single ICAO-signed bundle of ALL CSCAs | ~300 certs |
+
+**Why the count difference is so large**: Each country has 1–10 CSCAs (long-lived, rotate
+every 3–5 years) but 100–1,000+ DSCs (one per passport office per production batch per year).
+Germany alone may have 500+ DSCs but only ~20 CSCAs spanning 20 years.
+
+#### cert-parser currently processes: PKD File 2 (CSCA Master Lists only)
+
+The `certs.dsc` table exists in the schema but is empty. DSC ingestion from PKD File 1
+is the planned Phase 2. See `docs/business/icao-data-sources-and-verification.md` for
+a full explanation of what each source contains, when DSCs are needed, and how CRLs
+work at both the CSCA level (rare, embedded in Master Lists) and DSC level (common,
+in PKD File 1).
+
+#### What a Master List `.bin` actually contains (empirical finding)
+
+**A per-country Master List `.bin` contains ONLY CSCAs — never DSCs, never standalone CRLs.**
+Verified by parsing all 24 real-world fixtures from the ICAO PKD:
+- Inner CSCAs: 1–639 per country (e.g., Spain=277, Germany=581, Seychelles=1)
+- Outer signer certs: 1–4 (also stored as root_ca)
+- Embedded CRLs: **0 in every single real fixture**
+
+The CMS format allows embedded CRLs (SignedData.crls field, RFC 5652) and ICAO Doc 9303
+permits it, but no participating country uses this field in practice. The `ml_composite.bin`
+test fixture artificially injects a real Colombia CRL (`crl_sample.der`) to exercise that
+code path — it is the ONLY fixture that triggers CRL parsing.
+
+**DSC trust chain is always exactly one step**: CSCA → DSC → Passport chip. There are
+no intermediate CAs. Every DSC is directly signed by a CSCA.
+
+#### Two levels of CRLs
+
+| CRL level | What it revokes | Source | cert-parser |
+|-----------|----------------|--------|:-----------:|
+| CSCA CRL | Root CA certificates (whole countries) | CMS format allows in Master Lists; **no real country uses this** — only synthetic `ml_composite.bin` triggers it | ✅ Code handles it |
+| DSC CRL | Document Signer Certificates (individual machines) | PKD File 1 (`icaopkd-001`) | 🔜 Phase 2 |
+
 ### 11.5 Test Fixtures Inventory
 
 ```
 tests/fixtures/
 ├── ml_*.bin           # 24 per-country Master List CMS blobs (2KB–957KB)
 │                      # Extracted from icaopkd-002 LDIF → pkdMasterListContent
+│                      # ALL contain 0 embedded CRLs and 0 DSCs — CSCAs only
 ├── ml_composite.bin   # Synthetic composite: 3 countries (SC+BD+BW) + Colombia CRL
 │                      # 5 inner CSCA certs + 3 outer signers + 1 CRL (15 revoked)
-│                      # Exercises ALL parser code paths
+│                      # Exercises ALL parser code paths — only fixture with CRLs
 ├── cert_*.der         # 5 individual DER certificates from icaopkd-001
 ├── crl_sample.der     # Real Colombia CRL (967 bytes, 15 revoked entries)
+│                      # From icaopkd-001, NOT from any Master List .bin
 ├── corrupt.bin        # Invalid random bytes
 ├── empty.bin          # Zero-length file
 └── truncated.bin      # Valid ASN.1 header, truncated payload
 ```
+
+Empirical fixture counts (inner CSCAs / outer signers / embedded CRLs):
+`ml_at`=9/2/0, `ml_bd`=2/2/0, `ml_bw`=2/2/0, `ml_ch`=474/2/0, `ml_cm`=6/2/0,
+`ml_de`=581/2/0, `ml_ec`=1/2/0, `ml_es`=277/1/0, `ml_fi`=7/2/0, `ml_fr`=83/2/0,
+`ml_in`=635/2/0, `ml_it`=626/1/0, `ml_lv`=13/1/0, `ml_md`=7/4/0, `ml_mn`=1/2/0,
+`ml_nl`=382/1/0, `ml_no`=6/1/0, `ml_sc`=1/1/0, `ml_se`=639/2/0, `ml_ua`=3/1/0,
+`ml_ug`=3/2/0, `ml_un`=536/2/0, `ml_uz`=4/2/0, `ml_xx`=580/2/0.
 
 The composite fixture (`ml_composite.bin`) is built by `scripts/build_composite_fixture.py`
 and is the ONLY fixture that exercises the CRL extraction code paths.

@@ -130,16 +130,26 @@ Timestamp of when this record was last updated. Currently not set by cert-parser
 
 ## How Many Certificates Are We Talking About?
 
-The ICAO PKD contains certificates from 100+ countries. A typical complete download yields:
+The ICAO PKD contains certificates from 100+ countries. The counts are dramatically different
+between the two certificate types because CSCAs are long-lived and rare, while DSCs are
+created frequently (one per passport office, per production batch, per year):
 
-| Type | Approximate Count |
-|------|:-----------------:|
-| Root CAs (CSCA) | 300-500 |
-| Document Signers (DSC) | 500-1000+ |
-| CRLs | 10-50 |
-| Revoked entries | 100-500 |
+| Type | Approximate Count | Why |
+|------|:-----------------:|-----|
+| Root CAs (CSCA) | ~300–500 worldwide | Rotate every 3–5 years, 1–10 per country |
+| Document Signers (DSC) | **100,000+** worldwide | One per personalization line per year |
+| CRLs (CSCA-level) | 10–50 | Embedded in some Master Lists |
+| CRLs (DSC-level) | 100–500+ | Distributed separately in PKD File 1 |
+| Revoked entries | Thousands | Accumulated over years |
+
+This is why the PKD download files have such different sizes: the Master List file is
+medium-sized (~300 certificates), while the DSC + CRL file is very large (100,000+ entries).
 
 cert-parser currently processes Master Lists only, which contain root CAs. DSC processing is planned for future expansion.
+
+> **Why are there far more DSCs than CSCAs?** And do you need DSCs to verify a passport?
+> See [ICAO Data Sources & Passport Verification](icao-data-sources-and-verification.md)
+> for a complete explanation of what each certificate type does and when each is needed.
 
 ## Why Do Countries Have So Many Certificates?
 

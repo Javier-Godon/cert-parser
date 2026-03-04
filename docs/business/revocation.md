@@ -37,12 +37,25 @@ REVOKED CERTIFICATES:
 
 ### Where CRLs Come From
 
-CRLs can be found in two places:
+CRLs exist at **two levels** — one for root CA certificates (CSCA CRLs) and one for
+Document Signer Certificates (DSC CRLs). These are distributed differently:
 
-1. **Inside Master List `.bin` files** — Some countries include CRLs alongside their root certificates (e.g., Colombia)
-2. **Separately in the PKD** — Distributed as standalone files (future expansion)
+| CRL type | What it revokes | Distribution | cert-parser support |
+|----------|----------------|-------------|:------------------:|
+| **CSCA CRL** | Root CA certificates (whole countries) | Sometimes embedded in Master Lists | ✅ Captured |
+| **DSC CRL** | Document Signer Certificates (individual machines) | PKD `icaopkd-001` LDIF file | 🔜 Future |
 
-cert-parser currently extracts CRLs from inside `.bin` files.
+> For a full explanation of why both levels exist and when each matters for passport
+> verification, see [ICAO Data Sources & Passport Verification](icao-data-sources-and-verification.md).
+
+Currently cert-parser extracts CRLs from two places:
+
+1. **Inside Master List `.bin` files** — The CMS format allows optional embedded CRLs,
+   and cert-parser handles them correctly. However, **no real-world Master List fixture
+   actually contains embedded CRLs** — the `ml_composite.bin` test fixture artificially
+   injects a real Colombia CRL (`crl_sample.der`) to exercise this code path.
+2. **Separately in the PKD** — DSC-level CRLs distributed as standalone entries in
+   `icaopkd-001` (future expansion)
 
 ### What Gets Stored
 
@@ -92,18 +105,24 @@ Without revocation checking, a passport signed by a compromised key would still 
 
 From the ICAO PKD data in cert-parser's test fixtures:
 
-- **Colombia** publishes CRLs with 15+ revoked entries
-- **Most countries** do not include CRLs in their Master Lists (they distribute them separately)
-- The composite test fixture (built for testing) contains a real Colombia CRL
+- **Colombia** has a real CRL (`crl_sample.der`) with 15 revoked entries — distributed
+  via `icaopkd-001` (PKD File 1), **not** embedded inside any Master List
+- **All 24 real-world Master List fixtures** contain **zero embedded CRLs** — this was
+  verified empirically by parsing every `ml_*.bin` file
+- The composite test fixture (`ml_composite.bin`) artificially injects Colombia's CRL into
+  a synthetic Master List envelope so that the CRL code path is exercised in tests
 
 ## Not All Master Lists Have CRLs
 
-It's important to understand that CRLs inside Master Lists are **optional**. Many countries distribute their CRLs through separate channels:
+CRLs inside Master Lists are **optional** per the CMS standard, but **no real-world country
+uses this option** — this was verified empirically by parsing all 24 real ICAO fixtures.
+CRLs are always distributed as separate entries in PKD File 1 (`icaopkd-001`):
 
-| Distribution Method | Countries | cert-parser support |
-|--------------------|-----------|:-------------------:|
-| Inside Master List `.bin` | Few (e.g., Colombia) | **Yes** (current) |
-| Separate PKD entries | Most countries | Future expansion |
-| Bilateral agreements | Some | Not applicable |
+| Distribution Method | Reality | cert-parser support |
+|--------------------|---------|:-------------------:|
+| Inside Master List `.bin` | Format allows it; **no country does it** | ✅ Code handles it (tested via synthetic fixture) |
+| Separate PKD entries (`icaopkd-001`) | **All real CRLs are here** | 🔜 Phase 2 |
+| Bilateral agreements | Some countries | Not applicable |
 
-cert-parser extracts CRLs when they're present in the `.bin` file, but doesn't fail or report errors when they're absent — that's normal behavior.
+cert-parser handles embedded CRLs correctly (the `ml_composite.bin` fixture exercises this
+path), and does not fail or report errors when they're absent — that's the normal case.

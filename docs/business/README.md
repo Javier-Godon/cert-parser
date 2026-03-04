@@ -7,6 +7,7 @@
 | Document | Description |
 |----------|-------------|
 | [What Is This Application?](what-is-this-application.md) | High-level overview — what cert-parser does and why it exists |
+| [ICAO Data Sources & Passport Verification](icao-data-sources-and-verification.md) | **Key reference** — the three ICAO download sources, which certificates are needed to verify a passport, why Master Lists only contain root CAs, and the role of DSCs and CRLs |
 | [Passports and Trust](passports-and-trust.md) | How biometric passports work, what trust anchors are, and why certificates matter |
 | [The Files We Process](the-files-we-process.md) | What `.bin` files are, what they contain, and where they come from |
 | [Certificates Explained](certificates-explained.md) | Types of certificates (CSCA, DSC), their metadata, and what each field means |

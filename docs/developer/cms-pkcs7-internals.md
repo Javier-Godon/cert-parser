@@ -1,5 +1,11 @@
 # CMS & PKCS#7 Internals
 
+> **Before reading this**: If you want to understand *why* there are different types of
+> certificates (CSCA vs DSC), what the ICAO download sources contain, and whether root CAs
+> alone are sufficient to verify a passport, read the business document first:
+> [ICAO Data Sources & Passport Verification](../business/icao-data-sources-and-verification.md).
+> This document focuses on the binary format of the Master List `.bin` files.
+
 ## What is CMS/PKCS#7?
 
 CMS (Cryptographic Message Syntax, RFC 5652) is a standard for wrapping cryptographic data — signed content, encrypted content, etc. PKCS#7 is the older name for the same standard. The ICAO Master Lists are distributed as **CMS SignedData** structures.

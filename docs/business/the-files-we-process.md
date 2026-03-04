@@ -94,6 +94,7 @@ ICAO distributes PKD data in two ways:
 
 1. **LDAP** (for participating countries) — real-time directory protocol
 2. **LDIF dumps** (public) — periodic file exports at https://download.pkd.icao.int/
+3. **Direct download** — https://www.icao.int/icao-pkd/icao-master-list (ICAO-signed bundle of all CSCAs)
 
 The REST service that cert-parser connects to serves this same data through a standard web API.
 
@@ -103,10 +104,26 @@ In the PKD's LDIF directory structure:
 
 | LDIF directory | Contains | cert-parser interest |
 |---------------|----------|:-------------------:|
-| `icaopkd-002` | Master Lists (`.bin` files) | **Yes** — our primary data source |
-| `icaopkd-001` | Individual DSCs and CRLs | Future expansion |
+| `icaopkd-002` | Master Lists (`.bin` files, one per country) | **Yes** — our primary data source |
+| `icaopkd-001` | Individual DSCs (Document Signer Certs) and CRLs | 🔜 Future expansion |
 
 Each Master List is stored under the LDIF attribute `pkdMasterListContent`.
+Each DSC is stored under `userCertificate;binary`.
+Each CRL is stored under `certificateRevocationList;binary`.
+
+### The Three ICAO Public Download Sources
+
+ICAO also provides direct public downloads (no LDAP connection required):
+
+| URL | Contains | File size (approx.) |
+|-----|----------|:------------------:|
+| https://pkddownloadsg.icao.int/download (File 1) | All DSCs + BCSCs + CRLs | Very large (100,000+ entries) |
+| https://pkddownloadsg.icao.int/download (File 2) | All CSCA Master Lists | Medium (~300 certificates) |
+| https://www.icao.int/icao-pkd/icao-master-list | ICAO-signed bundle of all CSCAs | Medium (~300 certificates) |
+
+> **Why are these counts so different, and which do you need to verify a passport?**
+> See [ICAO Data Sources & Passport Verification](icao-data-sources-and-verification.md)
+> for a complete explanation.
 
 ## What Happens After Download?
 
