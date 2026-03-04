@@ -17,7 +17,23 @@ spec:
 
 ---
 
-# Optional: expose /health, /ready, /info, /trigger via Ingress
+# Ingress: exposes the service behind an API gateway at /prt-cert-parser.
+#
+# How it works:
+#   External request:  GET /prt-cert-parser/health
+#   nginx rewrites to: GET /health              (strips the prefix)
+#   Pod receives:      GET /health  (on port 8000, no prefix)
+#   FastAPI root_path: "/prt-cert-parser"       (set via ROOT_PATH env var in ConfigMap)
+#
+# The ROOT_PATH env var tells FastAPI where it is mounted on the gateway so it
+# generates correct absolute URLs in OpenAPI docs, redirects, etc.
+# Kubernetes liveness/readiness probes hit the pod directly (no Ingress, no prefix) —
+# so probe paths remain /health and /ready without any prefix.
+#
+# nginx capture-group rewrite pattern:
+#   path: /prt-cert-parser(/|$)(.*)
+#   rewrite-target: /$2
+# This correctly handles both /prt-cert-parser and /prt-cert-parser/health etc.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -26,16 +42,21 @@ metadata:
   labels:
     app: cert-parser
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Strip /prt-cert-parser prefix before forwarding to the pod.
+    # $2 captures everything after the prefix (including the leading slash).
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # Forward the original prefix so Uvicorn/FastAPI can set root_path from the header
+    # (redundant when ROOT_PATH env var is set, but good practice for observability).
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Forwarded-Prefix /prt-cert-parser;
     # cert-manager.io/cluster-issuer: "letsencrypt-prod"  # Uncomment if using cert-manager
 spec:
   ingressClassName: nginx  # Adjust to your ingress controller
   rules:
-  - host: cert-parser.example.com
-    http:
+  - http:
       paths:
-      - path: /
-        pathType: Prefix
+      - path: /prt-cert-parser(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: cert-parser
@@ -43,5 +64,5 @@ spec:
               number: 8000
   # tls:                                       # Uncomment when TLS is configured
   # - hosts:
-  #   - cert-parser.example.com
+  #   - your-gateway-host.example.com
   #   secretName: cert-parser-tls

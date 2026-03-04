@@ -16,6 +16,7 @@ Entry point for production: uvicorn cert_parser.asgi:app --host 0.0.0.0 --port 8
 from __future__ import annotations
 
 import asyncio
+import os
 import threading
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -68,6 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log_level=settings.log_level,
         cron=settings.scheduler.cron,
         run_on_startup=settings.run_on_startup,
+        root_path=settings.root_path or "(none)",
     )
 
     # Create adapters and pipeline
@@ -144,11 +146,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 # ─────────────────────── FastAPI Application ───────────────────────
 
+def _load_root_path() -> str:
+    """
+    Read ROOT_PATH from the environment at module load time.
+
+    FastAPI requires root_path at construction time (before lifespan runs),
+    so we read it directly from the environment here.
+    AppSettings validates it again during full startup.
+    """
+    return os.environ.get("ROOT_PATH", "")
+
+
 app = FastAPI(
     title="cert-parser",
     description="ICAO Master List certificate parser — scheduled batch job as a web service",
     version="0.1.0",
     lifespan=lifespan,
+    root_path=_load_root_path(),
 )
 
 

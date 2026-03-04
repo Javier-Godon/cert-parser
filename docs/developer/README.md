@@ -8,7 +8,8 @@
 
 | Document | Description |
 |----------|-------------|
-| [Tooling for Newcomers](tooling-for-newcomers.md) | **START HERE** — plain-language explanation of ASGI, FastAPI, Uvicorn, ruff, mypy, ROP, and every library |
+| [Local Development Setup](local-development-setup.md) | **START HERE** — install Python 3.14, create `.venv`, configure PyCharm & VS Code on Windows and Ubuntu |
+| [Tooling for Newcomers](tooling-for-newcomers.md) | Plain-language explanation of ASGI, FastAPI, Uvicorn, ruff, mypy, ROP, and every library |
 | [Dockerfile](dockerfile.md) | How the production Docker image is built — multi-stage, non-root user, health checks |
 | [CI/CD Pipeline](cicd-pipeline.md) | Dagger Go SDK pipelines — standard + corporate, testcontainers limitation, host-based tests |
 | [Railway-ROP Framework](railway-rop-framework.md) | How `python_framework/railway-rop` is used in cert-parser — Result[T], flat_map, ErrorCode |

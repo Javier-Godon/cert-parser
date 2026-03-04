@@ -184,3 +184,11 @@ class AppSettings(BaseSettings):
     http_timeout_seconds: int = Field(default=60, ge=1)
     run_on_startup: bool = Field(default=True)
     log_level: str = Field(default="INFO")
+    root_path: str = Field(
+        default="",
+        description=(
+            "ASGI root_path for API gateway / reverse-proxy prefix mounting. "
+            "Set to the path prefix used by the upstream gateway, e.g. '/cert-parser'. "
+            "Leave empty when running without a gateway."
+        ),
+    )

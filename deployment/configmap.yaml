@@ -50,3 +50,13 @@ data:
   # ── Application ───────────────────────────────────────────────────────────
   RUN_ON_STARTUP: "false"
   LOG_LEVEL: "INFO"
+
+  # ── API Gateway root path ─────────────────────────────────────────────────
+  # FastAPI uses ROOT_PATH to generate correct URLs in OpenAPI docs and redirects
+  # when the service is exposed behind an API gateway with a path prefix.
+  # The gateway must strip this prefix before forwarding to the pod (or use
+  # nginx.ingress.kubernetes.io/rewrite-target: / in the Ingress).
+  # Internal cluster traffic (health probes, pod-to-pod) is unaffected —
+  # probes hit the pod directly on port 8000 with no prefix.
+  ROOT_PATH: "/prt-cert-parser"
+
