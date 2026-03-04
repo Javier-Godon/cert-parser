@@ -34,6 +34,10 @@ spec:
 #   path: /prt-cert-parser(/|$)(.*)
 #   rewrite-target: /$2
 # This correctly handles both /prt-cert-parser and /prt-cert-parser/health etc.
+#
+# NOTE: configuration-snippet is intentionally NOT used — snippet annotations are
+# disabled by the nginx ingress administrator (security hardening). The X-Forwarded-Prefix
+# header is not needed because ROOT_PATH is already injected via ConfigMap env var.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -45,10 +49,6 @@ metadata:
     # Strip /prt-cert-parser prefix before forwarding to the pod.
     # $2 captures everything after the prefix (including the leading slash).
     nginx.ingress.kubernetes.io/rewrite-target: /$2
-    # Forward the original prefix so Uvicorn/FastAPI can set root_path from the header
-    # (redundant when ROOT_PATH env var is set, but good practice for observability).
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header X-Forwarded-Prefix /prt-cert-parser;
     # cert-manager.io/cluster-issuer: "letsencrypt-prod"  # Uncomment if using cert-manager
 spec:
   ingressClassName: nginx  # Adjust to your ingress controller
