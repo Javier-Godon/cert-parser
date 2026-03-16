@@ -26,14 +26,18 @@ const (
 // Pipeline represents a universal Python CI/CD pipeline.
 // All project-specific values (name, image name) are discovered at runtime
 // from pyproject.toml inside the cloned repository — nothing is hardcoded.
-// Test stages are individually configurable via environment variables.
+// Git host, container registry, and test stages are individually configurable
+// via environment variables, enabling use with GitHub, GitLab, Gitea, etc.
 type Pipeline struct {
-	RepoName            string // GitHub repository name (e.g. "cert-parser")
+	RepoName            string // Repository name (e.g. "cert-parser")
 	ProjectName         string // Python project name from pyproject.toml
 	ImageName           string // Docker image name (default: RepoName, Docker-safe)
 	GitRepo             string // Full clone URL
 	GitBranch           string // Branch to build
-	GitUser             string // GitHub username
+	GitUser             string // Username on the Git host
+	GitHost             string // Git server hostname (e.g. "github.com", "gitlab.com")
+	Registry            string // Container registry (e.g. "ghcr.io", "registry.gitlab.com")
+	GitAuthUser         string // HTTP auth username for git clone (e.g. "x-access-token", "oauth2")
 	PipCache            *dagger.CacheVolume
 	RunUnitTests        bool // Whether to run unit tests (default: true)
 	RunIntegrationTests bool // Whether to run integration tests (default: true)
@@ -45,7 +49,16 @@ type Pipeline struct {
 
 // main runs the CI/CD pipeline.
 // Project name is auto-discovered from pyproject.toml unless overridden.
-// Required: CR_PAT, USERNAME.
+// Required: CR_PAT (registry/git token), USERNAME.
+//
+// Repository & registry configuration:
+//
+//	GIT_HOST=github.com|gitlab.com|...  (default: github.com)
+//	REGISTRY=ghcr.io|registry.gitlab.com|...  (default: ghcr.io)
+//	GIT_AUTH_USERNAME=x-access-token|oauth2|...  (default: x-access-token)
+//	REPO_NAME=<name>                    (auto-detected from parent dir if unset)
+//	GIT_BRANCH=<branch>                 (default: main)
+//	IMAGE_NAME=<name>                   (default: Docker-safe project name)
 //
 // Test configuration environment variables:
 //
@@ -69,6 +82,9 @@ func main() {
 	repoName := envOrDefault("REPO_NAME", "")
 	gitBranch := envOrDefault("GIT_BRANCH", "main")
 	imageName := envOrDefault("IMAGE_NAME", "")
+	gitHost := envOrDefault("GIT_HOST", "github.com")
+	registry := envOrDefault("REGISTRY", "ghcr.io")
+	gitAuthUser := envOrDefault("GIT_AUTH_USERNAME", "x-access-token")
 
 	// Parse configurable pipeline stages
 	runUnitTests := parseEnvBool("RUN_UNIT_TESTS", true)
@@ -78,8 +94,10 @@ func main() {
 	runTypeCheck := parseEnvBool("RUN_TYPE_CHECK", true)
 
 	fmt.Println("🚀 Starting Python CI/CD Pipeline (Go SDK v0.19.7)...")
-	fmt.Printf("   GitHub User: %s\n", username)
-	fmt.Printf("   Branch: %s\n", gitBranch)
+	fmt.Printf("   Git Host:  %s\n", gitHost)
+	fmt.Printf("   Registry:  %s\n", registry)
+	fmt.Printf("   User:      %s\n", username)
+	fmt.Printf("   Branch:    %s\n", gitBranch)
 	fmt.Println("🧪 Test Configuration:")
 	fmt.Printf("   Unit tests:        %v (RUN_UNIT_TESTS)\n", runUnitTests)
 	fmt.Printf("   Integration tests: %v (RUN_INTEGRATION_TESTS)\n", runIntegrationTests)
@@ -104,6 +122,9 @@ func main() {
 		ImageName:           imageName,
 		GitBranch:           gitBranch,
 		GitUser:             username,
+		GitHost:             gitHost,
+		Registry:            registry,
+		GitAuthUser:         gitAuthUser,
 		RunUnitTests:        runUnitTests,
 		RunIntegrationTests: runIntegrationTests,
 		RunAcceptanceTests:  runAcceptanceTests,
@@ -130,14 +151,14 @@ func (p *Pipeline) run(ctx context.Context, client *dagger.Client) error {
 		return fmt.Errorf("REPO_NAME environment variable is required (e.g. 'cert-parser')")
 	}
 
-	gitURL := fmt.Sprintf("https://github.com/%s/%s.git", p.GitUser, p.RepoName)
+	gitURL := fmt.Sprintf("https://%s/%s/%s.git", p.GitHost, p.GitUser, p.RepoName)
 	p.GitRepo = gitURL
 	fmt.Printf("\n📥 Cloning repository: %s (branch: %s)\n", gitURL, p.GitBranch)
 
 	repo := client.Git(gitURL, dagger.GitOpts{
 		KeepGitDir:       true,
 		HTTPAuthToken:    crPAT,
-		HTTPAuthUsername: "x-access-token",
+		HTTPAuthUsername: p.GitAuthUser,
 	})
 
 	source := repo.Branch(p.GitBranch).Tree()
@@ -346,30 +367,30 @@ func (p *Pipeline) run(ctx context.Context, client *dagger.Client) error {
 
 	imageNameClean := dockerSafeName(p.ImageName)
 	userLower := strings.ToLower(p.GitUser)
-	versionedImage := fmt.Sprintf("ghcr.io/%s/%s:%s", userLower, imageNameClean, imageTag)
-	latestImage := fmt.Sprintf("ghcr.io/%s/%s:latest", userLower, imageNameClean)
+	versionedImage := fmt.Sprintf("%s/%s/%s:%s", p.Registry, userLower, imageNameClean, imageTag)
+	latestImage := fmt.Sprintf("%s/%s/%s:latest", p.Registry, userLower, imageNameClean)
 
 	fmt.Printf("   Image: %s\n", versionedImage)
 	fmt.Printf("✅ STAGE %d COMPLETE: Docker image built\n", stageNum)
 
-	// ── Stage: Publish to GHCR ───────────────────────────────────
+	// ── Stage: Publish to Registry ───────────────────────────────
 	stageNum++
 	fmt.Printf("\n%s\n", strings.Repeat("=", 80))
-	fmt.Printf("PIPELINE STAGE %d: PUBLISH TO GHCR\n", stageNum)
+	fmt.Printf("PIPELINE STAGE %d: PUBLISH TO REGISTRY\n", stageNum)
 	fmt.Println(strings.Repeat("=", 80))
 	fmt.Printf("📤 Publishing to: %s\n", versionedImage)
 
 	password := client.SetSecret("password", os.Getenv("CR_PAT"))
 
 	publishedAddress, err := image.
-		WithRegistryAuth("ghcr.io", p.GitUser, password).
+		WithRegistryAuth(p.Registry, p.GitUser, password).
 		Publish(ctx, versionedImage)
 	if err != nil {
 		return fmt.Errorf("failed to publish versioned image: %w", err)
 	}
 
 	latestAddress, err := image.
-		WithRegistryAuth("ghcr.io", p.GitUser, password).
+		WithRegistryAuth(p.Registry, p.GitUser, password).
 		Publish(ctx, latestImage)
 	if err != nil {
 		return fmt.Errorf("failed to publish latest image: %w", err)

@@ -23,6 +23,7 @@ Complete guide to building and running the cert-parser Python Dagger Go CI/CD pi
 - ✅ **Docker required** for integration tests (optional for unit tests)
 - ✅ **Environment variables** control test scope
 - ✅ **Smart defaults** - full coverage by default, graceful degradation without Docker
+- ✅ **Registry-agnostic** - works with GitHub, GitLab, Gitea, or any OCI registry
 
 ---
 
@@ -35,6 +36,7 @@ Complete guide to building and running the cert-parser Python Dagger Go CI/CD pi
 ✅ Docker running
 ✅ credentials/.env with CR_PAT and USERNAME
 ❌ Dagger CLI (NOT needed - SDK handles it)
+❌ Python runtime locally (runs inside the Dagger container)
 ```
 
 ### Verify Setup
@@ -43,6 +45,22 @@ Complete guide to building and running the cert-parser Python Dagger Go CI/CD pi
 go version                  # Should show go1.22+
 docker ps                   # Should work
 cat credentials/.env        # Should show CR_PAT=... USERNAME=...
+```
+
+### Registry & Git Host (Optional — defaults to GitHub + GHCR)
+
+| Variable | Default | Example override |
+|---|---|---|
+| `GIT_HOST` | `github.com` | `gitlab.com` |
+| `REGISTRY` | `ghcr.io` | `registry.gitlab.com` |
+| `GIT_AUTH_USERNAME` | `x-access-token` | `oauth2` |
+
+Add to `credentials/.env` to persist, or export per-session:
+```bash
+# GitLab example
+GIT_HOST=gitlab.com
+REGISTRY=registry.gitlab.com
+GIT_AUTH_USERNAME=oauth2
 ```
 
 ---
@@ -182,6 +200,8 @@ Fast PR checks:
     RUN_INTEGRATION_TESTS: 'false'
     CR_PAT: ${{ secrets.CR_PAT }}
     USERNAME: ${{ github.actor }}
+    # GIT_HOST and REGISTRY default to github.com / ghcr.io
+    # Override for GitLab: GIT_HOST: gitlab.com, REGISTRY: registry.gitlab.com
   run: cd dagger_go && ./run.sh
 ```
 
@@ -251,6 +271,7 @@ Image: ghcr.io/username/cert-parser:v0.1.0-abc1234-20260224-1030
 - ✅ Docker running (Dagger SDK uses it)
 - ✅ CR_PAT and USERNAME in credentials/.env
 - ❌ Dagger CLI NOT required
+- ❌ Python runtime NOT required locally (runs in container)
 
 ---
 

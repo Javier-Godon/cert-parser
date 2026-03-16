@@ -11,7 +11,7 @@
 | **Docker Integration** | ✅ Native | `dag.Docker()` API, service binding, network connectivity |
 | **Testcontainers Support** | ✅ Proven | Daggerverse module (github.com/vito/daggerverse/testcontainers), production-ready |
 | **Security (CI)** | ✅ Safe | TCP socket acceptable in isolated CI, industry-standard pattern |
-| **Java/Maven Support** | ✅ Available | Official Java modules on Daggerverse, OpenJDK 25 ready |
+| **Python/pip Support** | ✅ Available | `python:3.14-slim`, pip caching, pytest, ruff, mypy |
 | **Multi-Container** | ✅ Supported | Docker Compose integration modules available |
 | **Production Usage** | ✅ Active | Used in 1000+ public Daggerverse modules, zero reported incidents |
 
@@ -37,11 +37,13 @@
 ```go
 func (r *Pipeline) Test(ctx context.Context) (string, error) {
     return dag.Container().
-        From("maven:3.9-openjdk-25").
+        From("python:3.14-slim").
         WithMountedDirectory("/app", r.Source).
         With(dag.Testcontainers().Setup).    // ← This line is all you need!
         WithWorkdir("/app").
-        WithExec([]string{"mvn", "clean", "test"}).
+        WithExec([]string{"pip", "install", "-e", "./python_framework"}).
+        WithExec([]string{"pip", "install", "-e", ".[dev,server]"}).
+        WithExec([]string{"pytest", "-v", "--tb=short", "-m", "not integration and not acceptance"}).
         Stdout(ctx)
 }
 ```
@@ -95,7 +97,7 @@ docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e DOCKER_HOST=unix:///var/run/docker.sock \
   -e TESTCONTAINERS_RYUK_DISABLED=true \
-  cert-parser-test mvn test
+  cert-parser-test pytest -v --tb=short
 ```
 
 ### With Dagger
@@ -146,7 +148,7 @@ services:
   docker:
     image: docker:dind
   test:
-    image: maven:3.9
+    image: python:3.14-slim
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 ```
@@ -181,9 +183,9 @@ dag.Testcontainers().Setup
    - `github.com/sagikazarmark/daggerverse/docker` (v0.11.0)
    - `github.com/opopops/daggerverse/docker` (v1.6.5)
 
-2. **Testcontainers Java Integration**
-   - Reference repo: `github.com/kpenfound/testcontainers-java-repro`
-   - Demonstrates working setup with Maven + Docker
+2. **Testcontainers Python Integration**
+   - Reference repo: `github.com/vito/daggerverse/testcontainers`
+   - Demonstrates working setup with Python + Docker + PostgreSQL (testcontainers-python)
 
 3. **Community Feedback**
    - GitHub issues: Zero security incidents (2023-2025)

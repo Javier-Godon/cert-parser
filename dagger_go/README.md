@@ -34,10 +34,10 @@ Enterprise-grade Dagger pipeline with Docker-integrated Testcontainers support, 
   - How test filtering works
   - Internal pipeline architecture
 
-- **[TESTCONTAINERS_IMPLEMENTATION_GUIDE.md](guides/TESTCONTAINERS_IMPLEMENTATION_GUIDE.md)** - For Java developers
-  - How to write integration tests
-  - Testcontainers setup
-  - Mother pattern examples
+- **[TESTCONTAINERS_IMPLEMENTATION_GUIDE.md](guides/TESTCONTAINERS_IMPLEMENTATION_GUIDE.md)** - Integration & acceptance tests
+  - How to write integration tests with testcontainers-python
+  - Testcontainers setup and PostgreSQL fixture patterns
+  - Given/When/Then test examples
 
 ### **docs/** - Investigation & Reference
 - **[docs/00_START_HERE.md](docs/00_START_HERE.md)** - Visual overview
@@ -56,13 +56,13 @@ Clone Repository
 🧪 Run Tests (unit, integration, or both)
     ├─ Unit tests only: 5-10 seconds (no Docker needed)
     ├─ Integration tests: 30-45 seconds (with Docker)
-    └─ Full suite: 40-60 seconds (both tests)
+    └─ Full suite: 40-60 seconds (all three tiers)
     ↓
-📦 Build Maven Project (if tests pass)
+🔍 Lint (ruff) + Type-check (mypy)
     ↓
-🐳 Dockerize (create container image)
+🐳 Build Docker image (from Dockerfile)
     ↓
-📤 Publish to GitHub Container Registry
+📤 Publish to Container Registry (versioned + latest tags)
 ```
 
 ---
@@ -87,8 +87,8 @@ Clone Repository
 
 ✅ **No External Dependencies**
 - ❌ Dagger CLI NOT required (Go SDK included)
-- ❌ Maven NOT required (runs in container)
-- ❌ Java NOT required (for running the pipeline)
+- ❌ Python runtime NOT required locally (runs in container)
+- ❌ Any registry-specific CLI NOT required (registry is configurable)
 
 ---
 
@@ -161,8 +161,7 @@ See [guides/BUILD_AND_RUN.md#debug](guides/BUILD_AND_RUN.md#debug-your-code-vsc)
 ✅ Docker (for integration tests, optional for unit)
 ✅ credentials/.env with CR_PAT and USERNAME
 ❌ Dagger CLI (NOT required)
-❌ Maven (runs in container)
-❌ Java (runs in container)
+❌ Python runtime locally (runs inside container)
 ```
 
 Verify:
@@ -315,6 +314,31 @@ See `guides/BUILD_AND_RUN.md` for:
 - Dagger CLI installation
 - Docker installation and configuration
 - Environment variables
+
+### Registry & Git Host Configuration
+
+The pipeline is not tied to GitHub or GHCR. Use any Git host and container registry:
+
+| Variable | Default | Description |
+|---|---|---|
+| `GIT_HOST` | `github.com` | Git server hostname |
+| `REGISTRY` | `ghcr.io` | Container registry |
+| `GIT_AUTH_USERNAME` | `x-access-token` | HTTP auth username for git clone |
+| `CR_PAT` | *(required)* | Personal access token for registry + git |
+| `USERNAME` | *(required)* | Your username on the git host |
+
+**Examples:**
+
+```bash
+# GitHub + GHCR (default — nothing extra needed)
+./run.sh
+
+# GitLab
+GIT_HOST=gitlab.com REGISTRY=registry.gitlab.com GIT_AUTH_USERNAME=oauth2 ./run.sh
+
+# Self-hosted Gitea + custom registry
+GIT_HOST=gitea.mycompany.com REGISTRY=registry.mycompany.com ./run.sh
+```
 
 ## 🛠️ Troubleshooting
 

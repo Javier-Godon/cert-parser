@@ -2,54 +2,53 @@
 
 ## ✅ Completed Enhancements
 
-### 1. **Maven Wrapper Integration**
-- **No Maven installation required** on host machine
-- Uses `./mvnw` from repository
-- Works out-of-the-box on any system with Java
+### 1. **Configurable Registry & Git Host**
+- `GIT_HOST` environment variable — default `github.com`, works with GitLab, Gitea, or any self-hosted Git server
+- `REGISTRY` environment variable — default `ghcr.io`, works with any OCI-compliant registry
+- `GIT_AUTH_USERNAME` environment variable — default `x-access-token`, override for `oauth2` (GitLab) or others
+- Zero breaking change — existing `credentials/.env` files continue to work unchanged
 
 ### 2. **Jenkins/Tekton-Style Detailed Logging**
 
 ```
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  STAGE: Unit Tests Execution (Dagger Container)                              ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-📍 Location: Inside Dagger container (isolated environment)
-⚡ Characteristics: Fast, no external dependencies, pure business logic
-
-⚙️  Configuration:
-   • Test Pattern: !*IntegrationTest (excludes integration tests)
-   • Java Version: 25 (with preview features)
-   • Expected Test Count: ~58 unit tests
-
-🏃 Executing: mvn test -Dtest=!*IntegrationTest
+================================================================================
+PIPELINE STAGE 1: UNIT TESTS
+================================================================================
+📍 Location: Dagger container (isolated, no Docker needed)
+🧪 Running: pytest -m "not integration and not acceptance"
 ─────────────────────────────────────────────────────────────────────────────────
-[test output]
+[pytest output]
 ─────────────────────────────────────────────────────────────────────────────────
-
-✅ SUCCESS: All unit tests passed
+✅ STAGE 1 COMPLETE: All unit tests passed
 ```
 
-### 3. **Dual Test Execution Strategy**
+### 3. **Three-Tier Test Execution Strategy**
 
-#### **Unit Tests (58 tests)**
+#### **Unit Tests (111 tests)**
 - **Location**: Inside Dagger container
 - **Characteristics**: Fast, isolated, no Docker dependencies
-- **Duration**: ~19 seconds
-- **Benefits**: Consistent environment, cached dependencies
+- **Duration**: ~15 seconds
+- **Benefits**: Consistent environment, cached pip packages
 
-#### **Integration Tests (12 tests)**
+#### **Integration Tests**
 - **Location**: Host machine (outside Dagger)
-- **Tool**: Maven wrapper (`./mvnw`)
-- **Characteristics**: Full Docker access, Testcontainers works perfectly
-- **Duration**: ~24 seconds
+- **Tool**: pytest + testcontainers-python (PostgreSQL)
+- **Characteristics**: Full Docker access, testcontainers works perfectly
+- **Duration**: ~30-60 seconds
 - **Benefits**: No Docker-in-Docker networking issues
+
+#### **Acceptance Tests**
+- **Location**: Host machine (outside Dagger)
+- **Tool**: pytest + testcontainers-python + real ICAO fixtures
+- **Characteristics**: Full pipeline end-to-end verification
+- **Duration**: ~30-60 seconds
 
 ### 4. **Applied to Both Pipelines**
 
 #### ✅ Standard Pipeline (`main.go`)
 - Unit tests in container
-- Integration tests on host
-- Maven wrapper
+- Integration/acceptance tests on host
+- Configurable registry and git host
 - Detailed logging
 
 #### ✅ Corporate Pipeline (`corporate_main.go`)
@@ -59,49 +58,46 @@
 - Certificate discovery and diagnostics
 - Proxy environment inheritance for host tests
 
+---
+
 ## 📊 Results
 
-### Standard Pipeline Test
+### Standard Pipeline
+
 ```bash
 RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./cert-parser-dagger-go
 ```
 
 **Output:**
 ```
-================================================================================
-PIPELINE STAGE 1: TEST EXECUTION
-================================================================================
-
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  STAGE: Unit Tests Execution (Dagger Container)                              ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-✅ SUCCESS: All unit tests passed (58 tests)
-
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  STAGE: Integration Tests Execution (Host Machine)                           ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-✅ SUCCESS: Integration tests passed in 23.8s (12 tests)
+🚀 Starting Python CI/CD Pipeline (Go SDK v0.19.7)...
+   Git Host:  github.com
+   Registry:  ghcr.io
+   User:      javier-godon
+   Branch:    main
 
 ================================================================================
-✅ STAGE 1 COMPLETE: All tests passed
+PIPELINE STAGE 1: UNIT TESTS
 ================================================================================
+✅ STAGE 1 COMPLETE: All unit tests passed
 
 ================================================================================
-PIPELINE STAGE 2: BUILD ARTIFACT
+PIPELINE STAGE 2: INTEGRATION TESTS
 ================================================================================
-✅ STAGE 2 COMPLETE: Build successful
+✅ STAGE 2 COMPLETE: All integration tests passed
 
 ================================================================================
-PIPELINE STAGE 3: BUILD DOCKER IMAGE
+PIPELINE STAGE 5: BUILD DOCKER IMAGE
 ================================================================================
 ✅ Images published:
-   📦 Versioned: ghcr.io/javier-godon/cert-parser:v1.0.0-e46812e
-   📦 Latest: ghcr.io/javier-godon/cert-parser:latest
+   📦 Versioned: ghcr.io/javier-godon/cert-parser:v0.1.0-e46812e-20260316-1030
+   📦 Latest:    ghcr.io/javier-godon/cert-parser:latest
 
 🎉 Pipeline completed successfully!
 ```
 
-### Corporate Pipeline Test
+### Corporate Pipeline
+
 ```bash
 RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./cert-parser-corporate-dagger-go
 ```
@@ -110,40 +106,37 @@ RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./cert-parser-corporate-dagger-g
 ```
 🏢 CORPORATE MODE: MITM Proxy & Custom CA Support
    📜 Found 2 CA certificate(s)
+   Git Host   : github.com
+   Registry   : ghcr.io
+   User       : javier-godon
 
-🧪 Test Configuration:
-   Unit tests: true
-   Integration tests: false
-
-PIPELINE STAGE 1: TEST EXECUTION
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  STAGE: Unit Tests Execution (Dagger Container)                              ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
+================================================================================
+PIPELINE STAGE 1: UNIT TESTS
+================================================================================
 🏢 Corporate: CA certificates and proxy configured
-✅ SUCCESS: All unit tests passed
-
-✅ STAGE 1 COMPLETE: All tests passed
+✅ STAGE 1 COMPLETE: All unit tests passed
 ```
+
+---
 
 ## 🔧 Technical Details
 
-### File Changes
+### Environment Variables
 
-#### `main.go`
-- Added `os/exec` import
-- Added `separatorLine` constant
-- Modified `runTests()` to orchestrate dual strategy
-- Created `runUnitTests()` for container execution
-- Created `runIntegrationTestsOnHost()` for Maven wrapper on host
-- Added detailed logging throughout pipeline stages
-
-#### `corporate_main.go`
-- **Same improvements as main.go**
-- Added `corporateSeparatorLine` constant
-- Modified `runTestStage()` to orchestrate dual strategy
-- Created `runUnitTestsInContainer()` with corporate CA info
-- Created `runIntegrationTestsOnHost()` with proxy inheritance
-- Added corporate-specific configuration display
+| Variable | Default | Description |
+|---|---|---|
+| `CR_PAT` | *(required)* | Registry / git personal access token |
+| `USERNAME` | *(required)* | Username on the git host |
+| `GIT_HOST` | `github.com` | Git server hostname |
+| `REGISTRY` | `ghcr.io` | Container registry |
+| `GIT_AUTH_USERNAME` | `x-access-token` | HTTP auth username for git clone |
+| `REPO_NAME` | *(auto-detected)* | Repository name |
+| `GIT_BRANCH` | `main` | Branch to build |
+| `RUN_UNIT_TESTS` | `true` | Run pytest unit tests |
+| `RUN_INTEGRATION_TESTS` | `true` | Run pytest integration tests |
+| `RUN_ACCEPTANCE_TESTS` | `true` | Run pytest acceptance tests |
+| `RUN_LINT` | `true` | Run ruff lint |
+| `RUN_TYPE_CHECK` | `true` | Run mypy type check |
 
 ### Build Commands
 
@@ -154,52 +147,45 @@ go build -o cert-parser-dagger-go main.go
 
 **Corporate Pipeline:**
 ```bash
-go build -o cert-parser-corporate-dagger-go -tags=corporate corporate_main.go main.go
+go build -tags corporate -o cert-parser-corporate-dagger-go corporate_main.go
 ```
+
+---
 
 ## 🎯 Key Achievements
 
-1. ✅ **Zero Host Dependencies**: Only requires Java and Docker
-2. ✅ **No Maven Installation**: Uses Maven wrapper
-3. ✅ **Professional Logging**: Clear stage separation like Jenkins/Tekton
-4. ✅ **Solved Docker-in-Docker**: Integration tests run on host
-5. ✅ **Corporate Support**: CA certificates and proxy fully working
-6. ✅ **Cross-Platform**: Works on Linux, macOS, Windows
-7. ✅ **Configurable**: Test execution controlled by environment variables
+1. ✅ **Registry-agnostic**: GitHub, GitLab, Gitea, or any OCI registry
+2. ✅ **Git-host-agnostic**: GitHub, GitLab, self-hosted — configurable
+3. ✅ **Zero Host Dependencies**: Only requires Go and Docker
+4. ✅ **Professional Logging**: Clear stage separation like Jenkins/Tekton
+5. ✅ **Solved Docker-in-Docker**: Integration/acceptance tests run on host
+6. ✅ **Corporate Support**: CA certificates and proxy fully working
+7. ✅ **Cross-Platform**: Works on Linux, macOS, Windows
+
+---
 
 ## 📝 Usage Examples
 
-### Run All Tests (Both Pipelines)
+### Run All Tests — GitHub + GHCR (default)
 ```bash
-# Standard
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./cert-parser-dagger-go
+./run.sh
+```
 
-# Corporate
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=true ./cert-parser-corporate-dagger-go
+### Run All Tests — GitLab + GitLab Registry
+```bash
+GIT_HOST=gitlab.com REGISTRY=registry.gitlab.com GIT_AUTH_USERNAME=oauth2 ./run.sh
 ```
 
 ### Run Only Unit Tests
 ```bash
-RUN_UNIT_TESTS=true RUN_INTEGRATION_TESTS=false ./cert-parser-dagger-go
-```
-
-### Run Only Integration Tests
-```bash
-RUN_UNIT_TESTS=false RUN_INTEGRATION_TESTS=true ./cert-parser-dagger-go
+RUN_INTEGRATION_TESTS=false RUN_ACCEPTANCE_TESTS=false ./run.sh
 ```
 
 ### Corporate with Debug Mode
 ```bash
-DEBUG_CERTS=true RUN_UNIT_TESTS=true ./cert-parser-corporate-dagger-go
+DEBUG_CERTS=true RUN_UNIT_TESTS=true ./run-corporate.sh
 ```
 
-## 🚀 Next Steps
+---
 
-The pipelines are production-ready with:
-- ✅ Comprehensive test coverage (58 unit + 12 integration)
-- ✅ Professional CI/CD logging
-- ✅ No external dependencies beyond Java/Docker
-- ✅ Corporate environment support
-- ✅ Cross-platform compatibility
-
-Both pipelines successfully build, test, and publish Docker images to GitHub Container Registry.
+Both pipelines are production-ready and publish Docker images to the configured registry.

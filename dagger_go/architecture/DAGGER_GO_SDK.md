@@ -12,7 +12,7 @@
 3. [Best Practices](#best-practices)
 4. [Production Patterns](#production-patterns)
 5. [Known Limitations](#known-limitations)
-6. [Integration with Java Projects](#integration-with-java-projects)
+6. [Integration with Python Projects](#integration-with-python-projects)
 
 ---
 
@@ -170,18 +170,18 @@ source := client.Host().Directory(".", dagger.HostDirectoryOpts{
 #### Cache Volumes
 ```go
 // Create persistent cache
-cache := client.CacheVolume("maven-cache")
+cache := client.CacheVolume("pip-cache")
 
 // Use in container
 container := client.Container().
-    From("amazoncorretto:25").
-    WithMountedCache("/root/.m2", cache).
-    WithExec([]string{"mvn", "clean", "package"})
+    From("python:3.14-slim").
+    WithMountedCache("/root/.cache/pip", cache).
+    WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
 ```
 
 **Benefits:**
-- Subsequent builds reuse cached Maven artifacts
-- Huge time savings for large projects
+- Subsequent builds reuse cached pip packages
+- Huge time savings for large dependency trees
 - Automatic cleanup when not needed
 
 #### Temporary Volumes
@@ -189,9 +189,9 @@ container := client.Container().
 // For file transfers between stages
 scratch := client.Container().From("scratch")
 
-// Copy file to scratch volume
-file := buildContainer.File("/build/app.jar")
-scratch = scratch.WithFile("/app.jar", file)
+// Copy built artifact to scratch volume
+file := buildContainer.File("/build/app.whl")
+scratch = scratch.WithFile("/app.whl", file)
 ```
 
 ### 5. Secret Management
@@ -227,14 +227,11 @@ image := dir.DockerBuild(dagger.DirectoryDockerBuildOpts{
 #### Programmatic Building
 ```go
 image := client.Container().
-    From("amazoncorretto:25").
-    WithExec([]string{"yum", "install", "-y", "maven"}).
+    From("python:3.14-slim").
+    WithExec([]string{"apt-get", "install", "-y", "git", "build-essential", "libpq-dev"}).
     WithMountedDirectory("/app", source).
     WithWorkdir("/app").
-    WithExec([]string{"mvn", "clean", "package"}).
-    // Returns Container with final state
-    Directory("/app").  // Get directory after build
-    DockerBuild()       // Create image from current layer
+    WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
 ```
 
 ### 7. Publishing to Registries
@@ -244,6 +241,21 @@ image := client.Container().
 address, err := image.
     WithRegistryAuth("ghcr.io", username, password).
     Publish(ctx, "ghcr.io/username/repo:tag")
+```
+
+#### GitLab Container Registry
+```go
+address, err := image.
+    WithRegistryAuth("registry.gitlab.com", username, password).
+    Publish(ctx, "registry.gitlab.com/group/repo:tag")
+```
+
+#### Any OCI-compliant Registry (configurable)
+```go
+// Use p.Registry from Pipeline struct — set via REGISTRY env var
+address, err := image.
+    WithRegistryAuth(p.Registry, p.GitUser, password).
+    Publish(ctx, fmt.Sprintf("%s/%s/%s:%s", p.Registry, p.GitUser, imageName, tag))
 ```
 
 #### Docker Hub
@@ -314,18 +326,16 @@ result, err := client.Container()./* ... */.Stdout(context.Background())
 
 ```go
 // ✅ CORRECT: Multiple cache volumes for different layers
-mavencache := client.CacheVolume("maven-cache")      // ~/.m2
-npmcache := client.CacheVolume("npm-cache")          // ~/.npm
-gradlecache := client.CacheVolume("gradle-cache")    // ~/.gradle
+pipCache := client.CacheVolume("pip-cache")          // ~/.cache/pip
 
-// ✅ CORRECT: Layer caching from Dockerfile
-# In Dockerfile, heavy operations first:
-RUN apt-get update && apt-get install -y ...  # Cached
-COPY . /app                                     # Invalidates on code change
-RUN mvn clean package                           # Rebuilds
+// ✅ CORRECT: Layer caching — heavy operations first
+// In Dockerfile:
+// RUN apt-get update && apt-get install -y ...  # Cached
+// COPY . /app                                     # Invalidates on code change
+// RUN pip install -e .[dev,server]               # Rebuilds only when pyproject.toml changes
 
 // ❌ WRONG: No caching
-container.WithExec([]string{"mvn", "clean", "package"})
+container.WithExec([]string{"pip", "install", "-e", "."})
 // Every build redownloads dependencies
 ```
 
@@ -333,7 +343,7 @@ container.WithExec([]string{"mvn", "clean", "package"})
 
 ```go
 // ✅ CORRECT: Structured logging
-fmt.Printf("📦 Building Java application...\n")
+fmt.Printf("🐍 Installing Python dependencies...\n")
 fmt.Printf("   Image: %s\n", imageTag)
 fmt.Printf("   Progress: Building...\n")
 
@@ -372,91 +382,68 @@ func main() {
 
 ## Production Patterns
 
-### Pattern 1: Maven Build with Caching
+### Pattern 1: Python Build with pip Caching
 
 ```go
-func buildMavenProject(ctx context.Context, client *dagger.Client) (string, error) {
-    // Create cache
-    mavenCache := client.CacheVolume("maven-cache")
-    
-    // Load source
+func buildPythonProject(ctx context.Context, client *dagger.Client) *dagger.Container {
+    pipCache := client.CacheVolume("pip-cache")
     source := client.Host().Directory(".")
-    
-    // Build container
-    builder := client.Container().
-        From("amazoncorretto:25.0.1").
-        WithExec([]string{"yum", "install", "-y", "maven"}).
-        WithMountedCache("/root/.m2", mavenCache).
+
+    return client.Container().
+        From("python:3.14-slim").
+        WithExec([]string{"apt-get", "update"}).
+        WithExec([]string{"apt-get", "install", "-y", "git", "build-essential", "libpq-dev"}).
+        WithMountedCache("/root/.cache/pip", pipCache).
         WithMountedDirectory("/app", source).
         WithWorkdir("/app").
-        WithExec([]string{
-            "mvn", "clean", "package",
-            "-DskipTests",
-            "-Dmaven.compiler.release=25",
-            "-Dmaven.compiler.compilerArgs=--enable-preview",
-        })
-    
-    // Get built JAR
-    jar := builder.File("/app/target/app.jar")
-    
-    // Export to host
-    return jar.Export(ctx, "./target/app.jar")
+        WithExec([]string{"pip", "install", "--upgrade", "pip"}).
+        // Install local framework first, then project with extras
+        WithExec([]string{"pip", "install", "-e", "./python_framework"}).
+        WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
 }
 ```
 
-### Pattern 2: Multi-Stage Docker Build
+### Pattern 2: Multi-Stage Docker Build for Python
 
 ```go
-func multiStageBuild(ctx context.Context, client *dagger.Client) *dagger.Container {
-    // Stage 1: Builder
-    builder := client.Container().
-        From("amazoncorretto:25.0.1").
-        WithExec([]string{"yum", "install", "-y", "maven"}).
-        WithMountedDirectory("/app", source).
-        WithWorkdir("/app").
-        WithExec([]string{"mvn", "clean", "package", "-DskipTests"})
-    
-    // Stage 2: Runtime
-    runtime := client.Container().
-        From("amazoncorretto:25.0.1").
-        WithFile("/app.jar", builder.File("/app/target/app.jar")).
-        WithExpose(8080).
-        WithEntrypoint([]string{"java", "-jar", "/app.jar"})
-    
-    return runtime
+func multiStageBuild(ctx context.Context, client *dagger.Client, source *dagger.Directory) *dagger.Container {
+    // Use project Dockerfile (preferred — reuses existing multi-stage definition)
+    return source.DockerBuild()
 }
 ```
 
-### Pattern 3: Parallel Builds (Future)
+### Pattern 3: Parallel Test Stages (goroutines)
 
 ```go
-// Not yet available in v0.19.7, but planned:
 // Use goroutines + WaitGroup for true parallelization
 
 func parallelBuilds(ctx context.Context, client *dagger.Client) error {
     var wg sync.WaitGroup
     errors := make(chan error, 2)
-    
-    // Build Java module
+
+    // Run lint and type-check in parallel
     wg.Add(1)
     go func() {
         defer wg.Done()
-        if err := buildJavaModule(ctx, client); err != nil {
+        if err := runLint(ctx, client); err != nil {
             errors <- err
         }
     }()
-    
-    // Build Docker image (separate)
+
     wg.Add(1)
     go func() {
         defer wg.Done()
-        if err := buildDockerImage(ctx, client); err != nil {
+        if err := runTypeCheck(ctx, client); err != nil {
             errors <- err
         }
     }()
-    
+
     wg.Wait()
-    // Check for errors...
+    close(errors)
+    for err := range errors {
+        return err
+    }
+    return nil
 }
 ```
 
@@ -488,8 +475,8 @@ Second build: ~10 seconds (cache hits)
 
 **Issue:** Some registries may not be accessible from container
 ```go
-// ✅ CORRECT: Use explicit registry auth
-image.WithRegistryAuth("ghcr.io", user, password)
+// ✅ CORRECT: Use explicit registry auth with configurable registry
+image.WithRegistryAuth(p.Registry, user, password)
 
 // May fail if network restricted in build container
 ```
@@ -509,68 +496,57 @@ client.Host().Directory(".")  // Could be GBs
 
 ---
 
-## Integration with Java Projects
+## Integration with Python Projects
 
-### Maven + Dagger Go Pattern
+### cert-parser Pipeline Pattern
+
+The cert-parser pipeline installs dependencies in two steps because the local
+`python_framework/` (railway-rop) must be installed before the main project:
 
 ```go
 // Your dagger_go/main.go
-func buildJavaProject(ctx context.Context, client *dagger.Client) error {
-    source := client.Host().Directory(".")
-    mavenCache := client.CacheVolume("maven-cache")
-    
-    jar := client.Container().
-        From("amazoncorretto:25.0.1").
-        WithExec([]string{"yum", "install", "-y", "maven"}).
-        WithMountedCache("/root/.m2", mavenCache).
-        WithMountedDirectory("/app", source).
-        WithWorkdir("/app").
-        WithExec([]string{"mvn", "clean", "package", "-DskipTests"}).
-        File("/app/target/app.jar")
-    
-    // Export built JAR
-    return jar.Export(ctx, "./target/app.jar")
-}
+builder := client.Container().
+    From("python:3.14-slim").
+    WithExec([]string{"apt-get", "install", "-y", "git", "build-essential", "libpq-dev"}).
+    WithMountedCache("/root/.cache/pip", pipCache).
+    WithMountedDirectory("/app", source).
+    WithWorkdir("/app").
+    WithExec([]string{"pip", "install", "--upgrade", "pip"}).
+    // 1. Local framework first (cert-parser depends on railway-rop)
+    WithExec([]string{"pip", "install", "-e", "./python_framework"}).
+    // 2. Main project with dev + server extras
+    WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
 ```
 
-### Spring Boot Application Deployment
+### Configurable Registry & Git Host
+
+The pipeline supports any Git host and container registry via environment variables:
 
 ```go
-func deploySpringBoot(ctx context.Context, client *dagger.Client, imageTag string) error {
-    // Build JAR
-    jar := buildJavaProject(ctx, client)
-    
-    // Create runtime image
-    runtime := client.Container().
-        From("amazoncorretto:25.0.1").
-        WithFile("/app.jar", jar).
-        WithEnvVariable("JAVA_OPTS", "--enable-preview").
-        WithExpose(8080, dagger.ContainerExposeOpts{
-            Description: "Spring Boot application",
-        }).
-        WithEntrypoint([]string{
-            "java", "$JAVA_OPTS", "-jar", "/app.jar",
-        })
-    
-    // Publish
-    password := client.SetSecret("ghcr_token", os.Getenv("GITHUB_TOKEN"))
-    _, err := runtime.
-        WithRegistryAuth("ghcr.io", username, password).
-        Publish(ctx, imageTag)
-    
-    return err
-}
+// Build git URL dynamically
+gitURL := fmt.Sprintf("https://%s/%s/%s.git", p.GitHost, p.GitUser, p.RepoName)
+
+// Build image ref dynamically
+versionedImage := fmt.Sprintf("%s/%s/%s:%s", p.Registry, userLower, imageNameClean, imageTag)
+
+// Auth against the configured registry
+image.WithRegistryAuth(p.Registry, p.GitUser, password)
 ```
+
+| `GIT_HOST` | `REGISTRY` | `GIT_AUTH_USERNAME` | Use case |
+|---|---|---|---|
+| `github.com` | `ghcr.io` | `x-access-token` | Default (GitHub + GHCR) |
+| `gitlab.com` | `registry.gitlab.com` | `oauth2` | GitLab SaaS |
+| `gitea.myco.com` | `registry.myco.com` | `token` | Self-hosted |
 
 ### Kubernetes Integration
 
 ```go
 func deployToKubernetes(ctx context.Context, image string) error {
-    // Use kubectl to deploy the built image
     return exec.CommandContext(ctx,
         "kubectl", "set", "image",
-        "deployment/railway",
-        fmt.Sprintf("railway=%s", image),
+        "deployment/cert-parser",
+        fmt.Sprintf("cert-parser=%s", image),
     ).Run()
 }
 ```

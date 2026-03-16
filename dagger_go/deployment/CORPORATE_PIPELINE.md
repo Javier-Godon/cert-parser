@@ -89,7 +89,7 @@ After: Corporate Pipeline
       ↓
    [✓] Custom CA certificates mounted in container
    [✓] Proxy configured (HTTP_PROXY environment variables)
-   [✓] Maven configured for proxy
+   [✓] pip/Python configured for proxy (REQUESTS_CA_BUNDLE, SSL_CERT_FILE)
    [✓] Docker images pull successfully
 ```
 

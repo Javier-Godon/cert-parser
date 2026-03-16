@@ -28,7 +28,8 @@ const (
 // CorporatePipeline represents the cert-parser CI/CD pipeline with corporate
 // MITM proxy and custom CA certificate support. All project-specific values
 // (name, image name) are discovered at runtime from pyproject.toml — nothing
-// is hardcoded. Test stages are individually configurable via environment variables.
+// is hardcoded. Git host, container registry, and test stages are individually
+// configurable via environment variables.
 type CorporatePipeline struct {
 	RepoName            string
 	ProjectName         string // Discovered from pyproject.toml
@@ -36,6 +37,9 @@ type CorporatePipeline struct {
 	GitRepo             string
 	GitBranch           string
 	GitUser             string
+	GitHost             string // Git server hostname (e.g. "github.com", "gitlab.com")
+	Registry            string // Container registry (e.g. "ghcr.io", "registry.gitlab.com")
+	GitAuthUser         string // HTTP auth username for git clone (e.g. "x-access-token", "oauth2")
 	PipCache            *dagger.CacheVolume // pip package cache
 	HasDocker           bool                // Docker available on host for testcontainers
 	RunUnitTests        bool                // Run pytest unit tests (default: true)
@@ -61,12 +65,18 @@ func parseEnvBool(key string, defaultValue bool) bool {
 // main runs the cert-parser CI/CD pipeline with corporate MITM proxy and
 // custom CA certificate support. Mirrors main.go but adds CA/proxy handling.
 //
-// Required: CR_PAT, USERNAME, REPO_NAME.
+// Required: CR_PAT (registry/git token), USERNAME, REPO_NAME.
+//
+// Repository & registry configuration:
+//
+//	GIT_HOST=github.com|gitlab.com|...       (default: github.com)
+//	REGISTRY=ghcr.io|registry.gitlab.com|... (default: ghcr.io)
+//	GIT_AUTH_USERNAME=x-access-token|oauth2|... (default: x-access-token)
+//	GIT_BRANCH=main                          (default: main)
+//	IMAGE_NAME=<name>                        (default: auto-discovered from pyproject.toml)
 //
 // Optional:
 //
-//	GIT_BRANCH=main            (default: main)
-//	IMAGE_NAME=<name>          (default: auto-discovered from pyproject.toml)
 //	HTTP_PROXY / HTTPS_PROXY   MITM proxy URL
 //	DEBUG_CERTS=true           Enable certificate discovery diagnostics
 //	CA_CERTIFICATES_PATH=...   Colon-separated paths to CA certs
@@ -104,6 +114,9 @@ func main() {
 	repoName := os.Getenv("REPO_NAME")
 	gitBranch := envOrDefaultCorp("GIT_BRANCH", "main")
 	imageName := os.Getenv("IMAGE_NAME") // empty is fine — auto-discovered later
+	gitHost := envOrDefaultCorp("GIT_HOST", "github.com")
+	registry := envOrDefaultCorp("REGISTRY", "ghcr.io")
+	gitAuthUser := envOrDefaultCorp("GIT_AUTH_USERNAME", "x-access-token")
 
 	runUnitTests := parseEnvBool("RUN_UNIT_TESTS", true)
 	runIntegrationTests := parseEnvBool("RUN_INTEGRATION_TESTS", true)
@@ -123,7 +136,9 @@ func main() {
 		fmt.Printf("   🌐 Proxy: %s\n", proxyURL)
 	}
 	fmt.Printf("🚀 Starting Python CI/CD Pipeline (Go SDK v0.19.7 - Corporate Mode)...\n")
-	fmt.Printf("   GitHub User : %s\n", username)
+	fmt.Printf("   Git Host    : %s\n", gitHost)
+	fmt.Printf("   Registry    : %s\n", registry)
+	fmt.Printf("   User        : %s\n", username)
 	fmt.Printf("   Repository  : %s (branch: %s)\n", repoName, gitBranch)
 	fmt.Println("🧪 Test Configuration:")
 	fmt.Printf("   Unit tests:        %v (RUN_UNIT_TESTS)\n", runUnitTests)
@@ -168,6 +183,9 @@ func main() {
 		ImageName:           imageName,
 		GitBranch:           gitBranch,
 		GitUser:             username,
+		GitHost:             gitHost,
+		Registry:            registry,
+		GitAuthUser:         gitAuthUser,
 		RunUnitTests:        runUnitTests,
 		RunIntegrationTests: runIntegrationTests,
 		RunAcceptanceTests:  runAcceptanceTests,
@@ -668,7 +686,7 @@ else
 fi
 echo ""
 
-echo "=== Testing docker.io connectivity ==="
+echo "=== Testing container registry connectivity ==="
 curl -v https://registry-1.docker.io/v2/ 2>&1 | head -30 || true
 echo ""
 
@@ -676,11 +694,7 @@ echo "=== Testing GitHub Container Registry connectivity ==="
 curl -v https://ghcr.io/v2/ 2>&1 | head -30 || true
 echo ""
 
-echo "=== Testing Cloudflare R2 CDN (Docker Hub images) ==="
-curl -v https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/health 2>&1 | head -30 || true
-echo ""
-
-echo "=== Certificate Verification (docker.io) ==="
+echo "=== Certificate Verification (registry-1.docker.io) ==="
 echo | openssl s_client -servername registry-1.docker.io \
   -connect registry-1.docker.io:443 2>&1 | grep -E "subject=|issuer=|Verify return code" || true
 echo ""
@@ -729,14 +743,14 @@ func collectFromDirectory(dir string, discovered map[string]bool, paths *[]strin
 func (cp *CorporatePipeline) runCorporate(ctx context.Context, client *dagger.Client) error {
 	// ── Clone repository ────────────────────────────────────────
 	crPAT := client.SetSecret("github-pat", os.Getenv("CR_PAT"))
-	gitURL := fmt.Sprintf("https://github.com/%s/%s.git", cp.GitUser, cp.RepoName)
+	gitURL := fmt.Sprintf("https://%s/%s/%s.git", cp.GitHost, cp.GitUser, cp.RepoName)
 	cp.GitRepo = gitURL
 	fmt.Printf("\n📥 Cloning repository: %s (branch: %s)\n", gitURL, cp.GitBranch)
 
 	repo := client.Git(gitURL, dagger.GitOpts{
 		KeepGitDir:       true,
 		HTTPAuthToken:    crPAT,
-		HTTPAuthUsername: "x-access-token",
+		HTTPAuthUsername: cp.GitAuthUser,
 	})
 	source := repo.Branch(cp.GitBranch).Tree()
 
@@ -900,27 +914,27 @@ func (cp *CorporatePipeline) runCorporate(ctx context.Context, client *dagger.Cl
 	imageTag := fmt.Sprintf("v0.1.0-%s-%s", shortSHA, timestamp)
 	imageNameClean := dockerSafeNameCorp(cp.ImageName)
 	userLower := strings.ToLower(cp.GitUser)
-	versionedImage := fmt.Sprintf("ghcr.io/%s/%s:%s", userLower, imageNameClean, imageTag)
-	latestImage := fmt.Sprintf("ghcr.io/%s/%s:latest", userLower, imageNameClean)
+	versionedImage := fmt.Sprintf("%s/%s/%s:%s", cp.Registry, userLower, imageNameClean, imageTag)
+	latestImage := fmt.Sprintf("%s/%s/%s:latest", cp.Registry, userLower, imageNameClean)
 	fmt.Printf("   Image: %s\n", versionedImage)
 	fmt.Printf("✅ STAGE %d COMPLETE: Docker image built\n", stageNum)
 
-	// ── Stage: Publish to GHCR ───────────────────────────────────
+	// ── Stage: Publish to Registry ───────────────────────────────
 	stageNum++
 	fmt.Printf("\n%s\n", strings.Repeat("=", 80))
-	fmt.Printf("PIPELINE STAGE %d: PUBLISH TO GHCR\n", stageNum)
+	fmt.Printf("PIPELINE STAGE %d: PUBLISH TO REGISTRY\n", stageNum)
 	fmt.Println(strings.Repeat("=", 80))
 	fmt.Printf("📤 Publishing to: %s\n", versionedImage)
 
 	password := client.SetSecret("password", os.Getenv("CR_PAT"))
 	pubAddr, err := image.
-		WithRegistryAuth("ghcr.io", cp.GitUser, password).
+		WithRegistryAuth(cp.Registry, cp.GitUser, password).
 		Publish(ctx, versionedImage)
 	if err != nil {
 		return fmt.Errorf("failed to publish versioned image: %w", err)
 	}
 	latestAddr, err := image.
-		WithRegistryAuth("ghcr.io", cp.GitUser, password).
+		WithRegistryAuth(cp.Registry, cp.GitUser, password).
 		Publish(ctx, latestImage)
 	if err != nil {
 		return fmt.Errorf("failed to publish latest image: %w", err)
@@ -1011,12 +1025,12 @@ func (cp *CorporatePipeline) setupBuildEnv(client *dagger.Client, source *dagger
 // getRepositorySource clones and returns (directory, commitSHA).
 // (Used internally when we need a bare source without the builder setup.)
 func (cp *CorporatePipeline) getRepositorySource(ctx context.Context, client *dagger.Client) (*dagger.Directory, string) {
-	gitURL := fmt.Sprintf("https://github.com/%s/%s.git", cp.GitUser, cp.RepoName)
+	gitURL := fmt.Sprintf("https://%s/%s/%s.git", cp.GitHost, cp.GitUser, cp.RepoName)
 	crPAT := client.SetSecret("github-pat", os.Getenv("CR_PAT"))
 	repo := client.Git(gitURL, dagger.GitOpts{
 		KeepGitDir:       true,
 		HTTPAuthToken:    crPAT,
-		HTTPAuthUsername: "x-access-token",
+		HTTPAuthUsername: cp.GitAuthUser,
 	})
 	commitSHA, _ := repo.Branch(cp.GitBranch).Commit(ctx)
 	return repo.Branch(cp.GitBranch).Tree(), commitSHA

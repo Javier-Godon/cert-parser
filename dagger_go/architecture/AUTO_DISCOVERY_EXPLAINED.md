@@ -198,7 +198,7 @@ ls /etc/ssl/certs/ca-certificates.crt  # ✅ exists
 # 2. Extracts host system certs that Docker uses
 # 3. Mounts ALL certificates into build container
 # 4. Updates CA certificate store
-# 5. Maven/curl/git now see the full CA chain!
+# 5. pip/httpx/git now see the full CA chain!
 ```
 
 ### Scenario 5: The Key Difference - What Gets Discovered

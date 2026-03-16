@@ -59,22 +59,22 @@ cert-parser
 │
 ├─ Dagger Pipeline (Go)
 │  │
-│  ├─ Maven Container (maven:3.9)
+│  ├─ Python Container (python:3.14-slim)
 │  │  │
 │  │  ├─ Mounted Source Code
 │  │  │
-│  │  ├─ Docker Service Binding ← Test containers start here
+│  │  ├─ Docker Service Binding ← Integration containers start here
 │  │  │  └─ DOCKER_HOST=tcp://docker:2375
 │  │  │
 │  │  └─ Execute Tests
-│  │     ├─ mvn clean test
+│  │     ├─ pytest -m "not integration and not acceptance"
 │  │     └─ Testcontainers work! ✅
 │  │
 │  └─ Docker Service (Daemon)
 │     └─ Provides container runtime
 │
 └─ Results
-   ├─ JUnit XML output
+   ├─ pytest XML output
    ├─ Container logs
    └─ Test reports
 ```
@@ -116,9 +116,9 @@ Time to implement: 1 hour
 │ PATTERN 1: Single Run (Simplest)                           │
 ├──────────────────────────────────────────────────────────────┤
 │ dag.Container().                                             │
-│   From("maven:3.9").                                        │
+│   From("python:3.14-slim").                                 │
 │   With(dag.Testcontainers().Setup).                        │
-│   WithExec(mvn test)                                        │
+│   WithExec(pytest -v --tb=short)                           │
 │                                                              │
 │ Best for: Quick tests, simple pipelines                    │
 └──────────────────────────────────────────────────────────────┘
@@ -127,10 +127,10 @@ Time to implement: 1 hour
 │ PATTERN 2: Persistent Docker (Optimized)                    │
 ├──────────────────────────────────────────────────────────────┤
 │ dockerService := dag.Docker().Daemon().Service()           │
-│ for each module:                                            │
+│ for each stage:                                             │
 │   container := dag.Container()...                          │
 │   .WithServiceBinding("docker", dockerService)            │
-│   .WithExec(mvn test)                                      │
+│   .WithExec(pytest -m integration)                         │
 │                                                              │
 │ Best for: Multiple test suites, CI/CD pipelines            │
 └──────────────────────────────────────────────────────────────┘

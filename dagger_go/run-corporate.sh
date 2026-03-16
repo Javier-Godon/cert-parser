@@ -1,6 +1,27 @@
 #!/bin/bash
-# Corporate pipeline runner with MITM proxy and custom CA support
-# This script compiles and runs the corporate_main.go version
+# Corporate pipeline runner with MITM proxy and custom CA support.
+# Compiles and runs the corporate_main.go variant.
+#
+# Required env vars (loaded from credentials/.env or exported):
+#   CR_PAT      - Personal access token for the container registry / git host
+#   USERNAME    - Your username on the git host
+#
+# Repository & registry configuration (optional — sensible defaults):
+#   GIT_HOST           - Git server host (default: github.com)
+#   REGISTRY           - Container registry (default: ghcr.io)
+#   GIT_AUTH_USERNAME  - HTTP auth user for git clone (default: x-access-token)
+#   REPO_NAME          - Repository name (auto-detected from parent dir if unset)
+#   GIT_BRANCH         - Branch to build (default: main)
+#   IMAGE_NAME         - Docker image name (default: Docker-safe project name)
+#
+# Corporate-specific:
+#   HTTP_PROXY / HTTPS_PROXY  - Corporate MITM proxy URL
+#   DEBUG_CERTS=true          - Enable certificate discovery diagnostics
+#   CA_CERTIFICATES_PATH=...  - Colon-separated paths to CA certs
+#
+# Examples:
+#   ./run-corporate.sh                                             # GitHub + GHCR
+#   GIT_HOST=gitlab.com REGISTRY=registry.gitlab.com GIT_AUTH_USERNAME=oauth2 ./run-corporate.sh
 
 set -e
 
@@ -28,8 +49,12 @@ if [ ! -f "credentials/.env" ]; then
     echo -e "${YELLOW}⚠️  credentials/.env not found${NC}"
     echo "   Create it with:"
     echo "   cat > credentials/.env << EOF"
-    echo "   CR_PAT=your_github_token"
-    echo "   USERNAME=your_github_username"
+    echo "   CR_PAT=your_registry_token"
+    echo "   USERNAME=your_username"
+    echo "   # Optional: corporate settings"
+    echo "   GIT_HOST=github.com"
+    echo "   REGISTRY=ghcr.io"
+    echo "   GIT_AUTH_USERNAME=x-access-token"
     echo "   HTTP_PROXY=http://proxy.company.com:8080"
     echo "   HTTPS_PROXY=https://proxy.company.com:8080"
     echo "   EOF"

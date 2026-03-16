@@ -1,13 +1,13 @@
 # Visual Studio Code Setup for Dagger Go Pipeline
 
-This guide explains how to configure **Visual Studio Code (VSC)** to develop and run the Railway-Oriented Java Dagger Go CI/CD pipeline.
+This guide explains how to configure **Visual Studio Code (VSC)** to develop and run the cert-parser Python Dagger Go CI/CD pipeline.
 
 **Why VSC for Go?**
 - Go is first-class citizen in VSC
 - Excellent extension ecosystem
 - Lightweight and fast
 - Free and open-source
-- Better for Go than IntelliJ Community Edition
+- Good for both Go (pipeline) and Python (application)
 
 ---
 
@@ -23,11 +23,9 @@ This guide explains how to configure **Visual Studio Code (VSC)** to develop and
 ### Step 1: Open Workspace (30 seconds)
 
 ```bash
-cd /home/javier/javier/workspaces/public_github/cert-parser
-code .vscode/cert-parser.code-workspace
+cd /home/javier/javier/workspaces/cert-parser
+code .
 ```
-
-VSC opens with all projects organized.
 
 ### Step 2: Run Tests (1 minute)
 
@@ -44,9 +42,11 @@ Ctrl+Shift+P → Tasks: Run Task → Run Dagger Pipeline
 ```
 
 Watch terminal:
-- 📦 Maven builds Java project
+- 🐍 pip installs Python dependencies
+- 🧪 pytest runs unit/integration/acceptance tests
+- 🔍 ruff lint + mypy type-check
 - 🐳 Docker builds container image
-- 📤 Image pushed to GitHub Container Registry
+- 📤 Image pushed to container registry
 - ✅ Pipeline complete
 
 **That's it! Your Dagger Go CI/CD pipeline is running.**
@@ -161,14 +161,14 @@ code .vscode/cert-parser.code-workspace
 ```
 
 **This opens:**
-- 🚂 Railway Framework (Java) - Main application
-- 🔧 Dagger Go Pipeline - CI/CD orchestration
+- 🐍 cert-parser (Python) - Main application (`src/cert_parser/`)
+- 🔧 Dagger Go Pipeline - CI/CD orchestration (`dagger_go/`)
 - 📄 Deployment - Kubernetes configs
-- 🧪 API Tests - Postman/K6 tests
+- 🧪 Tests - pytest unit/integration/acceptance
 
 **Advantages:**
 - All folders in one workspace ✅
-- Shared settings for Java + Go ✅
+- Shared settings for Python + Go ✅
 - Easy navigation between modules ✅
 - Tasks run in correct context ✅
 
@@ -908,10 +908,13 @@ Binary created: `cert-parser-dagger-go` (15MB)
 
 Expected output:
 ```
-🚀 Starting Railway Dagger Go CI/CD Pipeline...
-📦 Building Maven project...
+🚀 Starting Python CI/CD Pipeline (Go SDK v0.19.7)...
+🐍 Installing Python dependencies...
+🧪 Running unit tests... ✅ 111 passed
+🔍 Running lint (ruff)... ✅ No issues
+🔍 Running type check (mypy)... ✅ 0 errors
 🐳 Building Docker image...
-📤 Pushing to GHCR...
+📤 Pushing to registry...
 ✅ Pipeline completed successfully
 ```
 
@@ -1057,14 +1060,16 @@ cd ${workspaceFolder}/dagger_go && ./run.sh
 ```
 
 **Actions:**
-1. Loads GitHub credentials (`CR_PAT`, `USERNAME`)
+1. Loads credentials (`CR_PAT`, `USERNAME`) — and optionally `GIT_HOST`, `REGISTRY`
 2. Validates Docker daemon running
 3. Executes full CI/CD pipeline:
-   - Discovers Java project structure
-   - Builds Maven package (`mvn clean package`)
-   - Creates Docker image
+   - Discovers Python project name from `pyproject.toml`
+   - Installs `python_framework` (railway-rop) then project with `.[dev,server]`
+   - Runs `pytest` unit/integration/acceptance tests
+   - Lints with `ruff`, type-checks with `mypy`
+   - Creates Docker image from `Dockerfile`
    - Tags with git SHA
-   - Pushes to GitHub Container Registry
+   - Pushes to the configured container registry
    - Logs to CloudWatch (if configured)
    - Cleans up temporary resources
 

@@ -14,6 +14,9 @@ func TestRepositoryConfiguration(t *testing.T) {
 		GitRepo:             "https://github.com/test/cert-parser.git",
 		GitBranch:           "main",
 		GitUser:             "testuser",
+		GitHost:             "github.com",
+		Registry:            "ghcr.io",
+		GitAuthUser:         "x-access-token",
 		RunUnitTests:        true,
 		RunIntegrationTests: true,
 		RunAcceptanceTests:  true,
@@ -30,8 +33,14 @@ func TestRepositoryConfiguration(t *testing.T) {
 	if pipeline.GitBranch == "" {
 		t.Fatal("GitBranch is empty")
 	}
+	if pipeline.GitHost == "" {
+		t.Fatal("GitHost is empty")
+	}
+	if pipeline.Registry == "" {
+		t.Fatal("Registry is empty")
+	}
 
-	fmt.Printf("✅ Repository config valid: %s (%s)\n", pipeline.RepoName, pipeline.GitBranch)
+	fmt.Printf("✅ Repository config valid: %s @ %s → %s\n", pipeline.RepoName, pipeline.GitHost, pipeline.Registry)
 }
 
 // TestPipelineDefaultFlags tests that Pipeline flags default to zero values
@@ -99,40 +108,75 @@ func TestEnvironmentVariables(t *testing.T) {
 	fmt.Println("✅ Environment variable checks completed")
 }
 
-// TestImageNaming tests Docker image naming logic
+// TestImageNaming tests Docker image naming logic with configurable registry
 func TestImageNaming(t *testing.T) {
 	pipeline := &Pipeline{
 		ImageName: "cert-parser",
 		GitUser:   "javier-godon",
+		Registry:  "ghcr.io",
 	}
 
-	imageName := fmt.Sprintf("ghcr.io/%s/%s:v0.1.0", pipeline.GitUser, pipeline.ImageName)
+	imageName := fmt.Sprintf("%s/%s/%s:v0.1.0", pipeline.Registry, pipeline.GitUser, pipeline.ImageName)
 
 	if imageName == "" {
 		t.Fatal("Image name is empty")
 	}
-	if !contains(imageName, "ghcr.io") {
+	if !contains(imageName, pipeline.Registry) {
 		t.Fatal("Image name should contain registry")
+	}
+	if !contains(imageName, pipeline.ImageName) {
+		t.Fatal("Image name should contain image name")
 	}
 
 	fmt.Printf("✅ Image naming valid: %s\n", imageName)
 }
 
-// TestGitRepositoryURL tests Git repository URL construction
+// TestImageNamingCustomRegistry tests Docker image naming with a custom registry
+func TestImageNamingCustomRegistry(t *testing.T) {
+	pipeline := &Pipeline{
+		ImageName: "cert-parser",
+		GitUser:   "mygroup",
+		Registry:  "registry.gitlab.com",
+	}
+
+	imageName := fmt.Sprintf("%s/%s/%s:v0.1.0", pipeline.Registry, pipeline.GitUser, pipeline.ImageName)
+
+	if !contains(imageName, "registry.gitlab.com") {
+		t.Fatalf("Image name should contain custom registry, got: %s", imageName)
+	}
+
+	fmt.Printf("✅ Custom registry image naming valid: %s\n", imageName)
+}
+
+// TestGitRepositoryURL tests Git repository URL construction with configurable host
 func TestGitRepositoryURL(t *testing.T) {
-	username := "testuser"
-	repoName := "cert-parser"
-
-	gitRepo := fmt.Sprintf("https://github.com/%s/%s.git", username, repoName)
-
-	if !contains(gitRepo, "github.com") {
-		t.Fatal("Git repository URL should contain github.com")
-	}
-	if !contains(gitRepo, repoName) {
-		t.Fatal("Git repository URL should contain repository name")
+	tests := []struct {
+		gitHost  string
+		username string
+		repoName string
+	}{
+		{"github.com", "testuser", "cert-parser"},
+		{"gitlab.com", "mygroup", "cert-parser"},
+		{"gitea.mycompany.com", "myuser", "cert-parser"},
 	}
 
-	fmt.Printf("✅ Git repository URL valid: %s\n", gitRepo)
+	for _, tc := range tests {
+		pipeline := &Pipeline{
+			GitHost:  tc.gitHost,
+			GitUser:  tc.username,
+			RepoName: tc.repoName,
+		}
+		gitRepo := fmt.Sprintf("https://%s/%s/%s.git", pipeline.GitHost, pipeline.GitUser, pipeline.RepoName)
+
+		if !contains(gitRepo, tc.gitHost) {
+			t.Fatalf("Git repository URL should contain %s, got: %s", tc.gitHost, gitRepo)
+		}
+		if !contains(gitRepo, tc.repoName) {
+			t.Fatalf("Git repository URL should contain repository name, got: %s", gitRepo)
+		}
+
+		fmt.Printf("✅ Git repository URL valid: %s\n", gitRepo)
+	}
 }
 
 // TestExtractProjectName tests pyproject.toml name extraction

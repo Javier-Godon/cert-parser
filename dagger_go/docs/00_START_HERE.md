@@ -51,7 +51,7 @@ dag.Testcontainers().Setup  // ← That's it!
 | **Docker Integration** | ✅ Native | `dag.Docker()` API |
 | **Testcontainers** | ✅ Proven | Production Daggerverse module |
 | **Security** | ✅ Safe | Standard CI/CD pattern |
-| **Java/Maven** | ✅ Ready | Official modules available |
+| **Python/pip** | ✅ Ready | `python:3.14-slim` + pip caching |
 | **Production Use** | ✅ Active | 1000+ Daggerverse modules |
 
 ---
@@ -108,25 +108,28 @@ dagger call test
 ## 💡 One Complete Code Example
 
 ```go
-// Add this to dagger_go/main.go
-func (r *Railway) Test(ctx context.Context) (string, error) {
-    // That's genuinely all you need!
-    return dag.Container().
-        From("maven:3.9-openjdk-25").
-        WithMountedDirectory("/app", r.Source).
-        With(dag.Testcontainers().Setup).  // ← Docker setup in one line
-        WithWorkdir("/app").
-        WithExec([]string{"mvn", "clean", "test"}).
-        Stdout(ctx)
-}
+// From dagger_go/main.go — cert-parser pipeline core
+builder := client.Container().
+    From("python:3.14-slim").
+    WithMountedDirectory("/app", source).
+    With(dag.Testcontainers().Setup).  // ← Docker setup in one line
+    WithWorkdir("/app").
+    WithExec([]string{"pip", "install", "-e", "./python_framework"}).
+    WithExec([]string{"pip", "install", "-e", ".[dev,server]"})
+
+// Run unit tests in the container
+testOutput, _ := builder.
+    WithExec([]string{"pytest", "-v", "--tb=short", "-m", "not integration and not acceptance"}).
+    Stdout(ctx)
 ```
 
 **Then run**:
 ```bash
-dagger call test
+./run.sh
 ```
 
-That's it. Tests run with Docker available. No code changes to tests needed.
+Tests run with Docker available. Integration and acceptance tests run on the host
+(testcontainers needs native Docker socket — see guides/TESTCONTAINERS_IMPLEMENTATION_GUIDE.md).
 
 ---
 

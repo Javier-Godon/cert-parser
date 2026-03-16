@@ -225,6 +225,10 @@ jobs:
           CR_PAT: ${{ secrets.CR_PAT }}
           USERNAME: ${{ github.actor }}
           REPO_NAME: cert-parser
+          # GIT_HOST and REGISTRY default to github.com / ghcr.io — override for other hosts:
+          # GIT_HOST: gitlab.com
+          # REGISTRY: registry.gitlab.com
+          # GIT_AUTH_USERNAME: oauth2
         run: ./dagger_go/cert-parser-dagger-go
 ```
 
@@ -250,14 +254,31 @@ go test -cover
 | **Auth failure to GHCR** | Verify CR_PAT token has `write:packages` scope |
 | **Can't find project** | Set `REPO_NAME` or adjust `findProjectRoot()` |
 
-## 🔗 Integration with Java Project
+## 🔗 Registry & Git Host Configuration
 
-The Go module is **completely independent** but can be:
+The pipeline works with any Git host and container registry — not just GitHub + GHCR:
 
-1. **Run separately** before/after Maven builds
-2. **Called from Maven** via `exec-maven-plugin`
-3. **Triggered by GitHub Actions** on every push
-4. **Combined with Java module** in same IntelliJ workspace
+| Variable | Default | Description |
+|---|---|---|
+| `GIT_HOST` | `github.com` | Git server hostname |
+| `REGISTRY` | `ghcr.io` | Container registry |
+| `GIT_AUTH_USERNAME` | `x-access-token` | HTTP auth username for git clone |
+
+```bash
+# GitHub + GHCR (default — nothing extra needed)
+export CR_PAT="..." && export USERNAME="..." && ./run.sh
+
+# GitLab
+export GIT_HOST=gitlab.com
+export REGISTRY=registry.gitlab.com
+export GIT_AUTH_USERNAME=oauth2
+./run.sh
+
+# Self-hosted Gitea + Nexus
+export GIT_HOST=gitea.mycompany.com
+export REGISTRY=registry.mycompany.com
+./run.sh
+```
 
 ## 📈 Performance Gains
 
@@ -281,10 +302,11 @@ Before deployment:
 
 - [ ] Go 1.22+ installed
 - [ ] Docker daemon running
-- [ ] GitHub token (CR_PAT) available with write:packages scope
-- [ ] GitHub username set in environment
+- [ ] `CR_PAT` set — Personal Access Token with registry write access
+- [ ] `USERNAME` set — your username on the git host
 - [ ] Ran `./test.sh` successfully
-- [ ] credentials/.env file created with CR_PAT and USERNAME
+- [ ] `credentials/.env` created with `CR_PAT` and `USERNAME`
+- [ ] `GIT_HOST` / `REGISTRY` set if not using GitHub + GHCR
 
 ## 🧪 Test Modes
 
